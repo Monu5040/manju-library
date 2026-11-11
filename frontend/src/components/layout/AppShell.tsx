@@ -23,11 +23,15 @@ const NAV: Record<'portal' | 'admin', NavItem[]> = {
   ],
   admin: [
     { to: '/admin', label: 'Overview', end: true },
+    { to: '/admin/analytics', label: 'Analytics', roles: ['SUPER_ADMIN'] },
     { to: '/admin/students', label: 'Students' },
     { to: '/admin/seats', label: 'Seat map' },
     { to: '/admin/renewals', label: 'Renewals' },
-    { to: '/admin/payments', label: 'Payments' },
     { to: '/admin/waitlist', label: 'Waiting list' },
+    { to: '/admin/payments', label: 'Payments' },
+    { to: '/admin/expenses', label: 'Expenses' },
+    { to: '/admin/cash', label: 'Cash book' },
+    { to: '/admin/ledger', label: 'Ledger', roles: ['SUPER_ADMIN'] },
     { to: '/admin/notices', label: 'Notices' },
     { to: '/admin/import', label: 'Import', roles: ['SUPER_ADMIN'] },
     { to: '/admin/settings', label: 'Settings' },
@@ -97,7 +101,7 @@ export function AppShell({ area }: { area: keyof typeof NAV }) {
           <Brand to={home} />
           <div className="md:hidden">{logoutButton}</div>
         </div>
-        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-visible">
+        <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-x-visible md:overflow-y-auto">
           {items.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
               {item.label}

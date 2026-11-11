@@ -54,6 +54,8 @@ INSTALLED_APPS = [
     "billing",
     "imports",
     "portal",
+    "ledger",
+    "analytics",
 ]
 
 MIDDLEWARE = [

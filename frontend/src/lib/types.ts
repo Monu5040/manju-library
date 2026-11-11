@@ -334,3 +334,234 @@ export interface PortalReceipt extends PortalPayment {
   roll_no: number
   library: LibraryInfo
 }
+
+// --- ledger ----------------------------------------------------------------------------
+
+export type LedgerKind = 'EXPENSE' | 'INCOME'
+
+export interface LedgerCategory {
+  id: number
+  name: string
+  kind: LedgerKind
+  code: string | null
+  sort_order: number
+  is_active: boolean
+  entry_count: number
+}
+
+export interface LedgerEntry {
+  id: number
+  category: number
+  category_name: string
+  kind: LedgerKind
+  entry_date: string
+  amount: number
+  mode: PaymentMode
+  mode_label: string
+  party: string
+  details: string
+  reference: string
+  source: 'MANUAL' | 'BALANCE_SHEET'
+  source_label: string
+  created_by_name: string | null
+  created_at: string
+  is_void: boolean
+  void_reason: string
+  voided_at: string | null
+  voided_by_name: string | null
+}
+
+export interface LedgerSummary {
+  expenses: number
+  other_income: number
+  count: number
+  by_category: { category: number; name: string; kind: LedgerKind; total: number; count: number }[]
+}
+
+export interface LedgerDay {
+  day: string
+  students: number
+  fees: number
+  other_income: number
+  income: number
+  expenses: number
+  balance: number
+}
+
+export interface DailyLedger {
+  from: string
+  to: string
+  days: LedgerDay[]
+  totals: Omit<LedgerDay, 'day'>
+}
+
+export interface CashClosing {
+  id: number
+  day: string
+  period_start: string
+  opening: number
+  cash_in: number
+  cash_out: number
+  removed: number
+  expected: number
+  counted: number
+  difference: number
+  note: string
+  closed_by_name: string | null
+  created_at: string
+}
+
+export interface CashPreview {
+  day: string
+  period_start: string
+  previous_day: string | null
+  opening: number | null
+  fees: number
+  fee_count: number
+  other_income: number
+  other_income_count: number
+  expenses: number
+  expense_count: number
+  cash_in: number
+  cash_out: number
+  expected: number
+  can_close: boolean
+  blocked_reason: string
+  closing: CashClosing | null
+}
+
+export interface LedgerImportDay {
+  day: string
+  rows: number[]
+  students: number
+  sheet_amount: string
+  recorded: string
+  to_add: string
+  remarks: string
+  status: 'add' | 'covered' | 'already'
+}
+
+export interface LedgerImportExpense {
+  row: number
+  day: string
+  amount: string
+  details: string
+  remarks: string
+  category: string
+  category_name: string
+  status: 'add' | 'already'
+}
+
+export interface LedgerImportSummary {
+  first_day: string | null
+  last_day: string | null
+  income_days: number
+  sheet_income: string
+  days_to_add: number
+  income_to_add: string
+  days_covered: number
+  days_already: number
+  expense_lines: number
+  expenses_to_add: number
+  expense_total_to_add: string
+  expenses_already: number
+  errors: number
+  created?: number
+  removed?: number
+}
+
+export interface LedgerImport {
+  id: number
+  file_name: string
+  sheet: string
+  status: 'CHECKED' | 'IMPORTED' | 'UNDONE'
+  status_label: string
+  summary: LedgerImportSummary
+  created_by_name: string | null
+  created_at: string
+  imported_at: string | null
+  undone_at: string | null
+  can_undo: boolean
+  income?: LedgerImportDay[]
+  expenses?: LedgerImportExpense[]
+  errors?: { row: number; side: string; message: string }[]
+}
+
+// --- analytics -------------------------------------------------------------------------
+
+export type Grain = 'day' | 'month' | 'year'
+
+export interface Compared {
+  value: number
+  previous?: number
+}
+
+export interface RevenuePoint {
+  period: string
+  label: string
+  fees: number
+  other_income: number
+  income: number
+  expenses: number
+  profit: number
+}
+
+export type SlotState = 'taken' | 'partly' | 'free'
+
+export interface Occupancy {
+  date: string
+  percent: number
+  seats_total: number
+  seats_in_use: number
+  shifts: {
+    id: number
+    name: string
+    time_label: string
+    taken: number
+    partly: number
+    free: number
+    free_seats: string[]
+  }[]
+  grid: { seat: string; cells: SlotState[] }[]
+}
+
+export interface CountRow {
+  label: string
+  count: number
+}
+
+export interface Analytics {
+  from: string
+  to: string
+  as_of: string
+  previous: { from: string; to: string }
+  grain: Grain
+  kpis: {
+    income: Compared
+    fees: Compared
+    expenses: Compared
+    profit: Compared
+    new_admissions: Compared
+    active_members: Compared
+    occupancy_percent: Compared
+    seats_in_use: Compared & { of: number }
+    outstanding_dues: Compared
+    expiring_in_7_days: Compared
+  }
+  revenue: RevenuePoint[]
+  occupancy: Occupancy
+  retention: {
+    ended: number
+    renewed: number
+    left: number
+    undecided: number
+    renewal_rate: number | null
+    average_stay_months: number | null
+    cohorts: { month: string; label: string; joined: number; still_members: number; percent: number | null }[]
+  }
+  mix: { date: string; by_shift: CountRow[]; by_plan: CountRow[]; by_gender: CountRow[] }
+  collections: {
+    dues_by_age: { label: string; amount: number; count: number }[]
+    payment_modes: { mode: PaymentMode; label: string; amount: number; count: number }[]
+  }
+}

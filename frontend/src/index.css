@@ -23,6 +23,16 @@
   --warning: oklch(0.7 0.14 75);
   --ring: oklch(0.58 0.09 188);
   --radius: 0.625rem;
+  /*
+   * Chart colours, checked with the data-viz palette validator against the card surface in
+   * each mode: income and expenses (two series), and one blue ramp for ordered steps.
+   */
+  --chart-income: #2a78d6;
+  --chart-expense: #eb6834;
+  --chart-step-1: #86b6ef;
+  --chart-step-2: #3987e5;
+  --chart-step-3: #1c5cab;
+  --chart-empty: #ecebe6;
   color-scheme: light;
 }
 
@@ -45,6 +55,12 @@
     --success: oklch(0.7 0.13 150);
     --warning: oklch(0.8 0.13 75);
     --ring: oklch(0.72 0.09 188);
+    --chart-income: #3987e5;
+    --chart-expense: #d95926;
+    --chart-step-1: #184f95;
+    --chart-step-2: #2a78d6;
+    --chart-step-3: #6da7ec;
+    --chart-empty: #262c33;
     color-scheme: dark;
   }
 }
@@ -94,6 +110,12 @@
     --muted: oklch(0.96 0 0);
     --muted-foreground: oklch(0.35 0 0);
     --border: oklch(0.85 0 0);
+    --chart-income: #2a78d6;
+    --chart-expense: #eb6834;
+    --chart-step-1: #86b6ef;
+    --chart-step-2: #3987e5;
+    --chart-step-3: #1c5cab;
+    --chart-empty: #ecebe6;
     color-scheme: light;
   }
 }

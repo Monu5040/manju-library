@@ -29,6 +29,8 @@ type Handler = MockResponse | ((body: unknown) => MockResponse)
 export interface RecordedCall {
   method: string
   path: string
+  /** Path with the query string, for example /api/admin/analytics/?from=… */
+  url: string
   body: unknown
   headers: Record<string, string>
 }
@@ -38,10 +40,11 @@ export function mockApi(routes: Record<string, Handler>) {
   const calls: RecordedCall[] = []
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    const path = new URL(url, 'http://localhost').pathname
+    const parsed = new URL(url, 'http://localhost')
+    const path = parsed.pathname
     const method = (init?.method ?? 'GET').toUpperCase()
     const body = init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(String(init.body)) : undefined
-    calls.push({ method, path, body, headers: (init?.headers ?? {}) as Record<string, string> })
+    calls.push({ method, path, url: path + parsed.search, body, headers: (init?.headers ?? {}) as Record<string, string> })
 
     const handler = routes[`${method} ${path}`]
     const result: MockResponse = handler

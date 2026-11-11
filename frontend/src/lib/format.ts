@@ -45,3 +45,34 @@ export function timeShort(value: string | null): string {
   const suffix = h < 12 ? 'AM' : 'PM'
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${suffix}`
 }
+
+const compactNumber = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 })
+const wholeNumber = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 })
+
+/**
+ * Short amounts for chart axes and labels: ₹950, ₹9,500, ₹12K, ₹1.2L. `compact` shortens
+ * small amounts too (₹5K), so every tick on an axis that reaches ₹10K reads the same way.
+ */
+export function formatMoneyShort(amount: number, compact = false): string {
+  const sign = amount < 0 ? '−' : ''
+  const value = Math.abs(amount)
+  return `${sign}₹${value < 10_000 && !compact ? wholeNumber.format(value) : compactNumber.format(value)}`
+}
+
+const monthYear = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' })
+const dayMonth = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' })
+
+function localDate(iso: string): Date {
+  const [year, month, date] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(year, month - 1, date)
+}
+
+/** "Nov 2026" */
+export function formatMonth(iso: string): string {
+  return monthYear.format(localDate(iso))
+}
+
+/** "11 Nov" */
+export function formatDayMonth(iso: string): string {
+  return dayMonth.format(localDate(iso))
+}

@@ -136,10 +136,25 @@ changes settings, imports or sees full Aadhaar numbers. Every change is in the a
   `deploy/.env.example`). If MSG91 fails, the student is asked to try again in a minute and
   the failure is logged.
 
+**Phase 3 — ledger and analytics:**
+
+- **Expenses**: rent, bills, salaries and other money paid out, plus income that is not a
+  fee, by category (categories are managed in Settings). Staff record entries and see only
+  their own; the Super Admin sees, edits and voids all of them.
+- **Cash book**: the end-of-day count of the cash drawer. Each closing covers every day
+  since the previous one, shows what should be there and records any difference.
+- **Ledger** (Super Admin): money in and out, day by day, replacing the Excel Balance
+  Sheet. **Import old Balance Sheet** brings in its daily collections as past income; days
+  already covered by imported payments are not counted twice, and re-importing a newer copy
+  adds only new days.
+- **Analytics** (Super Admin): key numbers against the previous period, income and expenses
+  over time, seat occupancy by shift with the free slots to sell, renewals and retention,
+  members by shift, plan and gender, and dues by age. Every table exports to Excel or CSV.
+
 ## Still to do
 
 - **Turn on MSG91**: a DLT-registered sender ID and OTP template, then the MSG91 settings
   in `deploy/.env`. Until then the server runs as staging and login codes go to the server log.
 - **Backups** to object storage (deliberately left for later).
-- Next phases: online renewal (Razorpay), analytics, ledger and expenses, WhatsApp/SMS
-  reminders.
+- Next phases: reminders and nightly jobs (Phase 4), then hardening and launch; online
+  renewal (Razorpay) and the public enquiry form (with lead analytics) when wanted.

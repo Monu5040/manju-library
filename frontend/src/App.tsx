@@ -26,6 +26,11 @@ const WaitlistPage = lazy(() => import('@/pages/admin/WaitlistPage'))
 const ImportPage = lazy(() => import('@/pages/admin/ImportPage'))
 const ImportJobPage = lazy(() => import('@/pages/admin/ImportJobPage'))
 const NoticesPage = lazy(() => import('@/pages/admin/NoticesPage'))
+const AnalyticsPage = lazy(() => import('@/pages/admin/AnalyticsPage'))
+const ExpensesPage = lazy(() => import('@/pages/admin/ExpensesPage'))
+const LedgerPage = lazy(() => import('@/pages/admin/LedgerPage'))
+const LedgerImportPage = lazy(() => import('@/pages/admin/LedgerImportPage'))
+const CashBookPage = lazy(() => import('@/pages/admin/CashBookPage'))
 const PortalPaymentsPage = lazy(() => import('@/pages/portal/PortalPaymentsPage'))
 const PortalReceiptPage = lazy(() => import('@/pages/portal/PortalReceiptPage'))
 const PortalProfilePage = lazy(() => import('@/pages/portal/PortalProfilePage'))
@@ -75,6 +80,32 @@ export default function App() {
         <Route path="payments/:id/receipt" element={<ReceiptPage />} />
         <Route path="waitlist" element={<WaitlistPage />} />
         <Route path="notices" element={<NoticesPage />} />
+        <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="cash" element={<CashBookPage />} />
+        <Route
+          path="ledger"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <LedgerPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="ledger/import"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <LedgerImportPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <AnalyticsPage />
+            </RequireRole>
+          }
+        />
         <Route
           path="import"
           element={

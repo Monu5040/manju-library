@@ -28,7 +28,7 @@ XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 class Column:
     key: str
     title: str
-    kind: str = "text"  # text | int | money | date
+    kind: str = "text"  # text | int | number | money | date
     width: int = 16
     choices: tuple[str, ...] = ()  # dropdown in Excel templates
 
@@ -62,10 +62,7 @@ def to_csv(columns: list[Column], rows: list[dict]) -> bytes:
     return ("﻿" + buffer.getvalue()).encode("utf-8")
 
 
-def to_xlsx(columns: list[Column], rows: list[dict], sheet_title: str) -> bytes:
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = sheet_title[:31]
+def _fill_sheet(sheet, columns: list[Column], rows: list[dict]) -> None:
     sheet.append([c.title for c in columns])
     for cell in sheet[1]:
         cell.font = Font(bold=True)
@@ -79,7 +76,7 @@ def to_xlsx(columns: list[Column], rows: list[dict], sheet_title: str) -> bytes:
                 value = value.date()
             if value is None:
                 values.append(None)
-            elif c.kind == "money" and value != "":
+            elif c.kind in {"money", "number"} and value != "":
                 values.append(float(value))
             elif c.kind in {"date", "int"} or isinstance(value, (int, float, date)):
                 values.append(value)
@@ -105,19 +102,34 @@ def to_xlsx(columns: list[Column], rows: list[dict], sheet_title: str) -> bytes:
     sheet.freeze_panes = "A2"
     if rows:
         sheet.auto_filter.ref = sheet.dimensions
+
+
+def to_xlsx(columns: list[Column], rows: list[dict], sheet_title: str) -> bytes:
+    return to_xlsx_book([(sheet_title, columns, rows)])
+
+
+def to_xlsx_book(sheets: list[tuple[str, list[Column], list[dict]]]) -> bytes:
+    """One workbook with a sheet per table, for example every analytics section."""
+    workbook = Workbook()
+    workbook.remove(workbook.active)
+    for title, columns, rows in sheets:
+        _fill_sheet(workbook.create_sheet(title[:31]), columns, rows)
     output = io.BytesIO()
     workbook.save(output)
     return output.getvalue()
+
+
+def download(content: bytes, *, name: str, file_type: str) -> HttpResponse:
+    content_type = "text/csv; charset=utf-8" if file_type == "csv" else XLSX_TYPE
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{name}.{file_type}"'
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 def file_response(
     columns: list[Column], rows: list[dict], *, name: str, file_type: str, sheet: str = "Data"
 ) -> HttpResponse:
     if file_type == "csv":
-        content, content_type, extension = to_csv(columns, rows), "text/csv; charset=utf-8", "csv"
-    else:
-        content, content_type, extension = to_xlsx(columns, rows, sheet), XLSX_TYPE, "xlsx"
-    response = HttpResponse(content, content_type=content_type)
-    response["Content-Disposition"] = f'attachment; filename="{name}.{extension}"'
-    response["Cache-Control"] = "no-store"
-    return response
+        return download(to_csv(columns, rows), name=name, file_type="csv")
+    return download(to_xlsx(columns, rows, sheet), name=name, file_type="xlsx")
