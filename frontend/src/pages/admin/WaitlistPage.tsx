@@ -11,11 +11,30 @@ import { Spinner } from '@/components/ui/spinner'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { api, errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { useFreeSeats } from '@/lib/automation'
 import { useAdminMutation, useShifts, useStudents, useWaitlist } from '@/lib/queries'
 import type { WaitlistEntry } from '@/lib/types'
 
+/** Seats free for the next 30 days in the shift someone wants (any shift: the freest one). */
+function freeText(entry: WaitlistEntry, free: Record<string, string[]> | undefined, shiftNames: Map<number, string>): string {
+  if (!free) return ''
+  let shiftId = entry.preferred_shift
+  if (shiftId === null) {
+    const best = Object.entries(free).sort((a, b) => b[1].length - a[1].length)[0]
+    if (!best || best[1].length === 0) return 'No seat free'
+    shiftId = Number(best[0])
+  }
+  const seats = free[String(shiftId)] ?? []
+  if (seats.length === 0) return 'No seat free'
+  const shown = seats.slice(0, 5).join(', ') + (seats.length > 5 ? ` and ${seats.length - 5} more` : '')
+  return `${entry.preferred_shift === null ? `${shiftNames.get(shiftId) ?? 'Shift'}: ` : ''}seat${seats.length > 1 ? 's' : ''} ${shown}`
+}
+
 export default function WaitlistPage() {
   const waitlist = useWaitlist()
+  const free = useFreeSeats()
+  const shifts = useShifts()
+  const shiftNames = new Map(shifts.data?.map((s) => [s.id, s.name]))
   const [adding, setAdding] = useState(false)
   const update = useAdminMutation(({ id, status }: { id: number; status: WaitlistEntry['status'] }) =>
     api(`/admin/waitlist/${id}/`, { method: 'PATCH', body: { status } }),
@@ -25,7 +44,7 @@ export default function WaitlistPage() {
     <div>
       <PageHeader
         title="Waiting list"
-        description="Students waiting for a seat, in order. Open a student to give them a seat."
+        description="Students waiting for a seat, in order. Free now means free for the next 30 days; the first in line also gets a reminder."
         actions={<Button onClick={() => setAdding(true)}>Add to waiting list</Button>}
       />
       {update.error && <Alert variant="destructive" className="mb-4">{errorMessage(update.error)}</Alert>}
@@ -39,6 +58,7 @@ export default function WaitlistPage() {
               <TH>No.</TH>
               <TH>Student</TH>
               <TH>Wants</TH>
+              <TH>Free now</TH>
               <TH>Since</TH>
               <TH>
                 <span className="sr-only">Actions</span>
@@ -61,6 +81,7 @@ export default function WaitlistPage() {
                   {entry.preferred_shift_name ?? 'Any shift'}
                   {entry.note && <div className="text-xs text-muted-foreground">{entry.note}</div>}
                 </TD>
+                <TD className="text-sm">{freeText(entry, free.data, shiftNames)}</TD>
                 <TD>{formatDate(entry.created_at)}</TD>
                 <TD className="text-right whitespace-nowrap">
                   <Button asChild size="sm">

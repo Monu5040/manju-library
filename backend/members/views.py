@@ -16,6 +16,7 @@ from accounts.models import Role, User
 from accounts.permissions import AdminArea, CanExport
 from audit import services as audit
 from audit.mixins import AuditedViewSetMixin, snapshot
+from automation.models import Reminder
 from billing.models import Payment
 from billing.serializers import PaymentSerializer
 from billing.services import record_payment
@@ -37,7 +38,7 @@ from .serializers import (
     WaitlistEntrySerializer,
     pick_current,
 )
-from .services import create_student, renew_membership, save_membership
+from .services import create_student, free_seats, renew_membership, save_membership
 
 STUDENT_EXPORT_COLUMNS = [
     Column("roll_no", "Roll No.", "int", 9),
@@ -368,6 +369,12 @@ class WaitlistViewSet(BranchScopedMixin, AuditedViewSetMixin, ModelViewSet):
     pagination_class = None
     audit_entity = "waitlist"
 
+    @action(detail=False, methods=["get"], url_path="free-seats")
+    def free(self, request):
+        """Seats free in each shift for the next 30 days, keyed by shift id."""
+        seats = free_seats(self.get_branch(), timezone.localdate())
+        return Response({str(shift_id): numbers for shift_id, numbers in seats.items()})
+
     def get_save_kwargs(self) -> dict:
         kwargs = super().get_save_kwargs()
         if "position" not in self.request.data:
@@ -503,6 +510,10 @@ class DashboardView(APIView):
                     ),
                     "waiting": WaitlistEntry.objects.filter(
                         branch=branch, status=WaitlistEntry.Status.WAITING
+                    ).count(),
+                    "reminders_to_send": Reminder.objects.filter(
+                        branch=branch,
+                        status__in=[Reminder.Status.PENDING, Reminder.Status.FAILED],
                     ).count(),
                 },
             }

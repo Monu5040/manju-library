@@ -9,6 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,6 +57,7 @@ INSTALLED_APPS = [
     "portal",
     "ledger",
     "analytics",
+    "automation",
 ]
 
 MIDDLEWARE = [
@@ -212,6 +214,12 @@ MSG91_OTP_TEMPLATE_ID = env("MSG91_OTP_TEMPLATE_ID", default="")
 MSG91_CODE_VARIABLE = env("MSG91_CODE_VARIABLE", default="otp")
 MSG91_MINUTES_VARIABLE = env("MSG91_MINUTES_VARIABLE", default="")
 MSG91_API_URL = env("MSG91_API_URL", default="https://control.msg91.com/api/v5/flow/")
+# DLT-approved templates for automatic reminders. Each one receives the variables name,
+# library, date, seat, shift and amount. A kind without a template is sent by hand instead.
+MSG91_REMINDER_TEMPLATES = {
+    kind: env(f"MSG91_TEMPLATE_{kind}", default="")
+    for kind in ("EXPIRING_SOON", "EXPIRES_TODAY", "DUES", "WAITLIST")
+}
 
 # ---------------------------------------------------------------------------
 # Celery
@@ -226,6 +234,23 @@ CELERY_BEAT_SCHEDULE = {
     "purge-expired-login-codes": {
         "task": "accounts.tasks.purge_expired_login_codes",
         "schedule": timedelta(hours=1),
+    },
+    # Hourly in the day, so a missed run (a restart, a deploy) catches up within the hour.
+    "reminders": {
+        "task": "automation.tasks.run_reminders",
+        "schedule": crontab(minute=5, hour="8-20"),
+    },
+    "mark-students-left": {
+        "task": "automation.tasks.mark_students_left",
+        "schedule": crontab(minute=30, hour=2),
+    },
+    "purge-old-import-data": {
+        "task": "automation.tasks.purge_old_import_data",
+        "schedule": crontab(minute=40, hour=2),
+    },
+    "clear-expired-sessions": {
+        "task": "automation.tasks.clear_expired_sessions",
+        "schedule": crontab(minute=50, hour=2),
     },
 }
 

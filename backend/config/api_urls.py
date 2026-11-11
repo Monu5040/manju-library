@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts import views as accounts_views
 from analytics import views as analytics_views
+from automation import views as automation_views
 from billing.views import PaymentViewSet
 from core import views as core_views
 from imports.views import ImportViewSet
@@ -30,6 +31,7 @@ admin_router.register(
 admin_router.register("ledger/entries", ledger_views.LedgerEntryViewSet, basename="ledger-entry")
 admin_router.register("ledger/imports", ledger_views.LedgerImportViewSet, basename="ledger-import")
 admin_router.register("cash-closings", ledger_views.CashClosingViewSet, basename="cash-closing")
+admin_router.register("reminders", automation_views.ReminderViewSet, basename="reminder")
 
 urlpatterns = [
     path("health/", core_views.HealthView.as_view(), name="health"),
@@ -58,6 +60,11 @@ urlpatterns = [
     path("admin/admissions/", members_views.AdmissionView.as_view(), name="admin-admission"),
     path("admin/seat-map/", members_views.SeatMapView.as_view(), name="admin-seat-map"),
     path("admin/ledger/daily/", ledger_views.DailyLedgerView.as_view(), name="admin-ledger-daily"),
+    path(
+        "admin/automation/",
+        automation_views.AutomationSettingsView.as_view(),
+        name="admin-automation",
+    ),
     path("admin/analytics/", analytics_views.AnalyticsView.as_view(), name="admin-analytics"),
     path(
         "admin/analytics/export/",

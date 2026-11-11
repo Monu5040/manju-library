@@ -44,6 +44,13 @@ class BaseSMSBackend:
     def send_login_code(self, mobile: str, code: str, minutes: int) -> None:
         self.send(SMSMessage(mobile=mobile, text=login_code_text(code, minutes)))
 
+    def can_send_reminder(self, kind: str) -> bool:
+        """Whether reminders of this kind really reach the student (the console only logs)."""
+        return False
+
+    def send_reminder(self, mobile: str, kind: str, text: str, variables: dict) -> None:
+        self.send(SMSMessage(mobile=mobile, text=text))
+
 
 class ConsoleSMSBackend(BaseSMSBackend):
     def send(self, message: SMSMessage) -> None:
@@ -56,6 +63,9 @@ class LocmemSMSBackend(BaseSMSBackend):
     def send(self, message: SMSMessage) -> None:
         LocmemSMSBackend.outbox.append(message)
 
+    def can_send_reminder(self, kind: str) -> bool:
+        return True
+
 
 class Msg91SMSBackend(BaseSMSBackend):
     """
@@ -65,6 +75,7 @@ class Msg91SMSBackend(BaseSMSBackend):
       MSG91_CODE_VARIABLE (default "otp")     the template's variable for the code
       MSG91_MINUTES_VARIABLE (optional)       the template's variable for the minutes
       MSG91_API_URL (default https://control.msg91.com/api/v5/flow/)
+      MSG91_TEMPLATE_<KIND>                   reminder templates, see MSG91_REMINDER_TEMPLATES
     """
 
     def __init__(self):
@@ -74,14 +85,27 @@ class Msg91SMSBackend(BaseSMSBackend):
             raise ImproperlyConfigured("MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID must be set.")
 
     def send(self, message: SMSMessage) -> None:
-        raise SMSError("Only login codes have an approved SMS template so far.")
+        raise SMSError("Free text cannot be sent: Indian SMS needs an approved template.")
 
     def send_login_code(self, mobile: str, code: str, minutes: int) -> None:
         recipient = {"mobiles": f"91{mobile}", settings.MSG91_CODE_VARIABLE: code}
         if settings.MSG91_MINUTES_VARIABLE:
             recipient[settings.MSG91_MINUTES_VARIABLE] = str(minutes)
+        self._flow(self.template_id, recipient)
+
+    def can_send_reminder(self, kind: str) -> bool:
+        return bool(settings.MSG91_REMINDER_TEMPLATES.get(kind))
+
+    def send_reminder(self, mobile: str, kind: str, text: str, variables: dict) -> None:
+        """The approved template holds the wording; the variables fill it in."""
+        template = settings.MSG91_REMINDER_TEMPLATES.get(kind)
+        if not template:
+            raise SMSError("There is no approved SMS template for this kind of reminder.")
+        self._flow(template, {"mobiles": f"91{mobile}", **variables})
+
+    def _flow(self, template_id: str, recipient: dict) -> None:
         body = json.dumps(
-            {"template_id": self.template_id, "short_url": "0", "recipients": [recipient]}
+            {"template_id": template_id, "short_url": "0", "recipients": [recipient]}
         ).encode()
         request = urllib.request.Request(  # noqa: S310 (fixed https URL from settings)
             settings.MSG91_API_URL,
@@ -112,3 +136,15 @@ def send_sms(mobile: str, text: str) -> None:
 
 def send_login_code(mobile: str, code: str, minutes: int) -> None:
     get_backend().send_login_code(mobile, code, minutes)
+
+
+def reminder_ready(kind: str) -> bool:
+    """Whether a reminder of this kind can go out by SMS without anyone's help."""
+    try:
+        return get_backend().can_send_reminder(kind)
+    except ImproperlyConfigured:
+        return False
+
+
+def send_reminder(mobile: str, kind: str, text: str, variables: dict) -> None:
+    get_backend().send_reminder(mobile, kind, text, variables)

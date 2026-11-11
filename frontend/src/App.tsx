@@ -31,6 +31,7 @@ const ExpensesPage = lazy(() => import('@/pages/admin/ExpensesPage'))
 const LedgerPage = lazy(() => import('@/pages/admin/LedgerPage'))
 const LedgerImportPage = lazy(() => import('@/pages/admin/LedgerImportPage'))
 const CashBookPage = lazy(() => import('@/pages/admin/CashBookPage'))
+const RemindersPage = lazy(() => import('@/pages/admin/RemindersPage'))
 const PortalPaymentsPage = lazy(() => import('@/pages/portal/PortalPaymentsPage'))
 const PortalReceiptPage = lazy(() => import('@/pages/portal/PortalReceiptPage'))
 const PortalProfilePage = lazy(() => import('@/pages/portal/PortalProfilePage'))
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="students/:id" element={<StudentDetailPage />} />
         <Route path="seats" element={<SeatMapPage />} />
         <Route path="renewals" element={<RenewalsPage />} />
+        <Route path="reminders" element={<RemindersPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="payments/:id/receipt" element={<ReceiptPage />} />
         <Route path="waitlist" element={<WaitlistPage />} />

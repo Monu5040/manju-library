@@ -65,6 +65,7 @@ export default function NoticesPage() {
                   <Button size="sm" variant="outline" onClick={() => setEditing(n)}>
                     Edit
                   </Button>
+                  <CopyButton text={`*${n.title}*\n${n.body}`} />
                   {me?.role === 'SUPER_ADMIN' && (
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove.mutate(n.id)}>
                       Delete
@@ -132,5 +133,27 @@ function NoticeDialog({ notice, onClose }: { notice: Partial<Notice>; onClose: (
         </div>
       </form>
     </Dialog>
+  )
+}
+
+/** Copies a notice with WhatsApp formatting (*bold* title), to paste into the library's group. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          setCopied(false)
+        }
+      }}
+    >
+      {copied ? 'Copied' : 'Copy for WhatsApp'}
+    </Button>
   )
 }

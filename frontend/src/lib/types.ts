@@ -147,6 +147,7 @@ export interface Overview {
     collected_today: number
     collected_this_month: number
     waiting: number
+    reminders_to_send: number
   }
 }
 
@@ -564,4 +565,48 @@ export interface Analytics {
     dues_by_age: { label: string; amount: number; count: number }[]
     payment_modes: { mode: PaymentMode; label: string; amount: number; count: number }[]
   }
+}
+
+// --- reminders and automation ------------------------------------------------------------
+
+export type ReminderKind = 'EXPIRING_SOON' | 'EXPIRES_TODAY' | 'DUES' | 'WAITLIST'
+export type ReminderStatus = 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED'
+export type ReminderChannel = '' | 'SMS' | 'WHATSAPP' | 'CALL' | 'OTHER'
+
+export interface Reminder {
+  id: number
+  kind: ReminderKind
+  kind_label: string
+  status: ReminderStatus
+  status_label: string
+  channel: ReminderChannel
+  channel_label: string
+  for_date: string
+  student: number
+  student_name: string
+  roll_no: number
+  mobile: string
+  message: string
+  details: { seat?: string; shift?: string; end_date?: string; amount?: string; position?: number }
+  note: string
+  sent_at: string | null
+  sent_by_name: string | null
+  whatsapp_url: string
+}
+
+export interface AutomationSettings {
+  reminders_enabled: boolean
+  days_before_expiry: number
+  remind_on_expiry_day: boolean
+  dues_after_days: number
+  dues_repeat_days: number
+  waitlist_alerts: boolean
+  send_sms: boolean
+  mark_left_after_days: number
+  text_expiring_soon: string
+  text_expires_today: string
+  text_dues: string
+  text_waitlist: string
+  sms: Record<ReminderKind, boolean>
+  placeholders: Record<string, string>
 }

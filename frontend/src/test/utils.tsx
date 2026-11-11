@@ -24,7 +24,7 @@ interface MockResponse {
   body?: unknown
 }
 
-type Handler = MockResponse | ((body: unknown) => MockResponse)
+type Handler = MockResponse | ((body: unknown, url: string) => MockResponse)
 
 export interface RecordedCall {
   method: string
@@ -49,7 +49,7 @@ export function mockApi(routes: Record<string, Handler>) {
     const handler = routes[`${method} ${path}`]
     const result: MockResponse = handler
       ? typeof handler === 'function'
-        ? handler(body)
+        ? handler(body, path + parsed.search)
         : handler
       : { status: 404, body: { detail: `No mock for ${method} ${path}` } }
     const status = result.status ?? 200

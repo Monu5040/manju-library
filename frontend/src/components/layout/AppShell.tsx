@@ -4,6 +4,7 @@ import { NavLink, Outlet } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ROLE_LABELS, type Role, useLogout, useMe } from '@/lib/auth'
+import { useReminderSummary } from '@/lib/automation'
 import { cn } from '@/lib/utils'
 import { Brand } from './Brand'
 
@@ -12,6 +13,8 @@ interface NavItem {
   label: string
   end?: boolean
   roles?: Role[]
+  /** Shows how many reminders are waiting. */
+  counter?: boolean
 }
 
 const NAV: Record<'portal' | 'admin', NavItem[]> = {
@@ -24,6 +27,7 @@ const NAV: Record<'portal' | 'admin', NavItem[]> = {
   admin: [
     { to: '/admin', label: 'Overview', end: true },
     { to: '/admin/analytics', label: 'Analytics', roles: ['SUPER_ADMIN'] },
+    { to: '/admin/reminders', label: 'Reminders', counter: true },
     { to: '/admin/students', label: 'Students' },
     { to: '/admin/seats', label: 'Seat map' },
     { to: '/admin/renewals', label: 'Renewals' },
@@ -51,6 +55,7 @@ export function AppShell({ area }: { area: keyof typeof NAV }) {
   const { data: me } = useMe()
   const logout = useLogout()
   const items = NAV[area].filter((item) => !item.roles || (me && item.roles.includes(me.role)))
+  const reminders = useReminderSummary(area === 'admin')
   const home = area === 'admin' ? '/admin' : '/portal'
 
   const userBox = me && (
@@ -105,6 +110,14 @@ export function AppShell({ area }: { area: keyof typeof NAV }) {
           {items.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
               {item.label}
+              {item.counter && Boolean(reminders.data?.open) && (
+                <>
+                  <span aria-hidden="true" className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground tabular-nums">
+                    {reminders.data?.open}
+                  </span>
+                  <span className="sr-only">{`, ${reminders.data?.open} to send`}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>

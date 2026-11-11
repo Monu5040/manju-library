@@ -10,9 +10,9 @@ from django.utils import timezone
 
 from accounts.models import Role, User
 from core.validators import format_aadhaar, normalize_aadhaar, validate_aadhaar
-from library.models import Branch, Seat, format_minutes, ranges_overlap
+from library.models import Branch, Seat, Shift, format_minutes, ranges_overlap
 
-from .models import Membership, Student
+from .models import Membership, Student, WaitlistEntry
 
 
 def add_months(day: date, months: int) -> date:
@@ -127,15 +127,59 @@ def validate_membership(membership: Membership) -> None:
 
 def save_membership(membership: Membership) -> Membership:
     validate_membership(membership)
+    is_new = membership.pk is None
     try:
         with transaction.atomic():
             membership.save()
+            if is_new and membership.status != Membership.Status.CANCELLED:
+                welcome_back(membership)
     except IntegrityError as exc:
         if "no_double_booked_seat" in str(exc):
             # Someone else booked the seat between our check and the save.
             raise ValidationError({"seat": "This seat was just taken. Pick another."}) from exc
         raise
     return membership
+
+
+def welcome_back(membership: Membership) -> None:
+    """A new membership makes a student current again, and a seat ends their wait."""
+    student = membership.student
+    if student.status == Student.Status.LEFT:
+        student.status = Student.Status.ACTIVE
+        student.save(update_fields=["status", "updated_at"])
+    if membership.seat_id:
+        WaitlistEntry.objects.filter(student=student, status=WaitlistEntry.Status.WAITING).update(
+            status=WaitlistEntry.Status.SEATED
+        )
+
+
+def free_seats(branch: Branch, start: date, days: int = 30) -> dict[int, list[str]]:
+    """
+    For every active shift, the seats nobody has booked in that shift's hours from `start`
+    for `days` days: what can be offered to someone waiting. Follows the branch's
+    seat-sharing setting, like a new booking would.
+    """
+    end = start + timedelta(days=days - 1)
+    booked: dict[int, list[tuple[int, int]]] = {}
+    for seat_id, first, last in (
+        Membership.objects.not_cancelled()
+        .filter(branch=branch, seat__isnull=False, start_date__lte=end, end_date__gte=start)
+        .values_list("seat_id", "start_minute", "end_minute")
+    ):
+        booked.setdefault(seat_id, []).append((first, last))
+    seats = list(Seat.objects.filter(branch=branch, is_active=True).order_by("sort_key", "number"))
+    result = {}
+    for shift in Shift.objects.filter(branch=branch, is_active=True):
+        window = shift.minute_range
+        result[shift.pk] = [
+            seat.number
+            for seat in seats
+            if not any(
+                not branch.allow_seat_sharing or ranges_overlap(window, slot)
+                for slot in booked.get(seat.pk, [])
+            )
+        ]
+    return result
 
 
 @transaction.atomic

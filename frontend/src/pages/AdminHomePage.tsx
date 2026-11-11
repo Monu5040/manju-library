@@ -45,7 +45,15 @@ export default function AdminHomePage() {
           <StatCard label="Collected today" value={formatMoney(stats.collected_today)} />
           <StatCard label="Collected this month" value={formatMoney(stats.collected_this_month)} />
           <StatCard label="Waiting list" value={stats.waiting} />
-          <StatCard label="Staff accounts" value={(overview.data?.users.staff ?? 0) + (overview.data?.users.super_admins ?? 0)} />
+          <StatCard
+            label="Reminders to send"
+            value={stats.reminders_to_send}
+            hint={
+              <Link className="underline" to="/admin/reminders">
+                Open the list
+              </Link>
+            }
+          />
         </dl>
       )}
 

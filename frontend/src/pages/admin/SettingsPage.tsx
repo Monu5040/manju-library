@@ -3,6 +3,7 @@ import { Field } from '@/components/admin/MembershipFields'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AutomationCard } from '@/components/admin/AutomationCard'
 import { CategoriesCard } from '@/components/admin/CategoriesCard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
@@ -27,6 +28,7 @@ export default function SettingsPage() {
       <ShiftsCard canEdit={canEdit} />
       <SeatsCard canEdit={canEdit} />
       <PlansCard canEdit={canEdit} />
+      <AutomationCard canEdit={canEdit} />
       <CategoriesCard canEdit={canEdit} />
     </div>
   )

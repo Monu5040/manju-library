@@ -151,10 +151,28 @@ changes settings, imports or sees full Aadhaar numbers. Every change is in the a
   over time, seat occupancy by shift with the free slots to sell, renewals and retention,
   members by shift, plan and gender, and dues by age. Every table exports to Excel or CSV.
 
+**Phase 4 — automation:**
+
+- **Reminders** (menu, with a counter): every hour from 8 AM to 8 PM the app lists who to
+  remind: memberships ending in 3 days or today, fees still unpaid (repeating weekly), and
+  the first students waiting when a seat in their shift is free. The front desk taps
+  **WhatsApp** to open the chat with the message already written (free, from their own
+  phone), or marks a call. Reminders close themselves when the student renews or pays.
+- **Automatic SMS** for any reminder kind with a DLT-approved MSG91 template
+  (`MSG91_TEMPLATE_<KIND>` in `deploy/.env`); the rest stay on the list for WhatsApp.
+- **Settings → Reminders and automation**: when reminders are made, the message wording
+  (any language), automatic SMS, and an optional nightly rule that marks students as left
+  after a chosen number of days without a membership.
+- **Waiting list**: shows the seats free in each person's shift for the next 30 days; giving
+  someone a seat takes them off the list, and a returning student becomes current again.
+- **Nightly**: uploaded import files and the rows read from them (Aadhaar numbers
+  included) are deleted once the 7-day undo window has passed; expired sessions are
+  cleared. Notices can be copied with WhatsApp formatting for the library's group.
+
 ## Still to do
 
 - **Turn on MSG91**: a DLT-registered sender ID and OTP template, then the MSG91 settings
   in `deploy/.env`. Until then the server runs as staging and login codes go to the server log.
 - **Backups** to object storage (deliberately left for later).
-- Next phases: reminders and nightly jobs (Phase 4), then hardening and launch; online
-  renewal (Razorpay) and the public enquiry form (with lead analytics) when wanted.
+- Next phase: hardening and launch (Phase 5); online renewal (Razorpay) and the public
+  enquiry form (with lead analytics) when wanted.
