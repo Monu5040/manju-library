@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { mockApi, NOT_SIGNED_IN, owner, renderApp, student } from '@/test/utils'
+import { mockApi, NOT_SIGNED_IN, overview, owner, renderApp, student } from '@/test/utils'
 
 describe('Protected areas', () => {
   it('sends visitors who are not signed in to the student login', async () => {
@@ -27,7 +27,7 @@ describe('Protected areas', () => {
     let signedIn = true
     const { calls } = mockApi({
       'GET /api/auth/me/': () => (signedIn ? { body: owner } : NOT_SIGNED_IN),
-      'GET /api/admin/overview/': { body: { users: { students: 0, staff: 0, super_admins: 1 } } },
+      'GET /api/admin/overview/': { body: overview },
       'POST /api/auth/logout/': () => {
         signedIn = false
         return { status: 204 }
@@ -35,7 +35,8 @@ describe('Protected areas', () => {
     })
     renderApp('/admin')
 
-    await user.click(await screen.findByRole('button', { name: 'Log out' }))
+    // The layout has a phone and a desktop copy of the button; CSS shows one at a time.
+    await user.click((await screen.findAllByRole('button', { name: 'Log out' }))[0])
 
     expect(
       await screen.findByRole('heading', { name: 'A quiet place to study, every day' }),

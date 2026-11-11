@@ -1,13 +1,28 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { RequireRole } from '@/components/RequireRole'
-import AdminHomePage from '@/pages/AdminHomePage'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import PortalHomePage from '@/pages/PortalHomePage'
 import StaffLoginPage from '@/pages/StaffLoginPage'
 import StudentLoginPage from '@/pages/StudentLoginPage'
+import { FullPageSpinner } from '@/components/ui/spinner'
+
+// The admin area loads only when an admin opens it; students and visitors never download it.
+const AdminHomePage = lazy(() => import('@/pages/AdminHomePage'))
+const AccountPage = lazy(() => import('@/pages/admin/AccountPage'))
+const AdmissionPage = lazy(() => import('@/pages/admin/AdmissionPage'))
+const PaymentsPage = lazy(() => import('@/pages/admin/PaymentsPage'))
+const ReceiptPage = lazy(() => import('@/pages/admin/ReceiptPage'))
+const RenewalsPage = lazy(() => import('@/pages/admin/RenewalsPage'))
+const SeatMapPage = lazy(() => import('@/pages/admin/SeatMapPage'))
+const SettingsPage = lazy(() => import('@/pages/admin/SettingsPage'))
+const StaffPage = lazy(() => import('@/pages/admin/StaffPage'))
+const StudentDetailPage = lazy(() => import('@/pages/admin/StudentDetailPage'))
+const StudentsPage = lazy(() => import('@/pages/admin/StudentsPage'))
+const WaitlistPage = lazy(() => import('@/pages/admin/WaitlistPage'))
 
 export default function App() {
   return (
@@ -33,11 +48,31 @@ export default function App() {
         path="admin"
         element={
           <RequireRole roles={['SUPER_ADMIN', 'STAFF']}>
-            <AppShell area="admin" />
+            <Suspense fallback={<FullPageSpinner />}>
+              <AppShell area="admin" />
+            </Suspense>
           </RequireRole>
         }
       >
         <Route index element={<AdminHomePage />} />
+        <Route path="students" element={<StudentsPage />} />
+        <Route path="students/new" element={<AdmissionPage />} />
+        <Route path="students/:id" element={<StudentDetailPage />} />
+        <Route path="seats" element={<SeatMapPage />} />
+        <Route path="renewals" element={<RenewalsPage />} />
+        <Route path="payments" element={<PaymentsPage />} />
+        <Route path="payments/:id/receipt" element={<ReceiptPage />} />
+        <Route path="waitlist" element={<WaitlistPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route
+          path="staff"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <StaffPage />
+            </RequireRole>
+          }
+        />
+        <Route path="account" element={<AccountPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

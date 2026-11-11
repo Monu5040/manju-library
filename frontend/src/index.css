@@ -83,3 +83,17 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Receipts and lists print in dark ink on white paper, whatever the screen theme. */
+@media print {
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.15 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.15 0 0);
+    --muted: oklch(0.96 0 0);
+    --muted-foreground: oklch(0.35 0 0);
+    --border: oklch(0.85 0 0);
+    color-scheme: light;
+  }
+}

@@ -150,6 +150,12 @@ class MembershipTermsSerializer(BranchScopedFieldsMixin, serializers.Serializer)
         return attrs
 
 
+class NewMembershipSerializer(MembershipTermsSerializer):
+    """A membership for an existing student (for example from the waiting list)."""
+
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all())
+
+
 class MembershipWriteSerializer(BranchScopedFieldsMixin, serializers.ModelSerializer):
     """Editing an existing membership: change seat, shift, dates or fee."""
 

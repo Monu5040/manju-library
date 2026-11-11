@@ -1,9 +1,8 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { mockApi, NOT_SIGNED_IN, owner, renderApp } from '@/test/utils'
+import { mockApi, NOT_SIGNED_IN, overview, owner, renderApp } from '@/test/utils'
 
-const overview = { users: { students: 99, staff: 1, super_admins: 1 } }
 
 describe('Staff login', () => {
   it('connects an authenticator app on first sign-in', async () => {
@@ -33,7 +32,8 @@ describe('Staff login', () => {
     await user.click(screen.getByRole('button', { name: 'Connect and sign in' }))
 
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument()
-    expect(await screen.findByText('99')).toBeInTheDocument()
+    expect(await screen.findByText('Active members')).toBeInTheDocument()
+    expect(screen.getByText('99')).toBeInTheDocument()
     expect(calls.find((call) => call.path === '/api/auth/admin/login/')?.body).toEqual({
       identifier: 'owner@example.com',
       password: 'correct-horse-battery-staple',

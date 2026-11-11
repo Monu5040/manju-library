@@ -279,3 +279,21 @@ def test_memberships_list_hides_other_branches(staff_api, seats, day_plan):
         == 0
     )
     assert Membership.objects.count() == 1
+
+
+def test_existing_student_gets_a_new_membership_with_payment(staff_api, seats, shifts, day_plan):
+    student = Student.objects.create(
+        branch_id=1, roll_no=50, full_name="From Waitlist", mobile="9000000098"
+    )
+    body = {
+        "student": student.id,
+        "plan": day_plan.id,
+        "seat": seats[3].id,
+        "start_date": timezone.localdate().isoformat(),
+        "payment": {"amount": 450, "mode": "CASH"},
+    }
+    response = staff_api.post("/api/admin/memberships/", body, format="json")
+    assert response.status_code == 201, response.json()
+    assert response.json()["seat_number"] == "4" and response.json()["due_total"] == 0
+    clash = staff_api.post("/api/admin/memberships/", {**body, "payment": None}, format="json")
+    assert clash.status_code == 400 and "Seat 4" in clash.json()["seat"][0]

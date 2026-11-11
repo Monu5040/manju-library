@@ -81,3 +81,18 @@ export const owner: Me = {
   role: 'SUPER_ADMIN',
   can_export: true,
 }
+
+export const overview = {
+  users: { students: 99, staff: 1, super_admins: 1 },
+  library: {
+    active_members: 99,
+    seats: 51,
+    occupied_seats: 46,
+    occupancy_percent: 90,
+    expiring_in_7_days: 4,
+    outstanding_dues: 1250,
+    collected_today: 900,
+    collected_this_month: 11850,
+    waiting: 12,
+  },
+}

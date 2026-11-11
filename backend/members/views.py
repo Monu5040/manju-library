@@ -28,6 +28,8 @@ from .serializers import (
     AdmissionSerializer,
     MembershipSerializer,
     MembershipWriteSerializer,
+    NewMembershipSerializer,
+    PaymentInputSerializer,
     RenewSerializer,
     StudentSerializer,
     StudentWriteSerializer,
@@ -147,6 +149,36 @@ class MembershipViewSet(
                 after={k: after[k] for k in changed},
             )
         return self._read(instance)
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """A new membership for an existing student, with an optional first payment."""
+        serializer = NewMembershipSerializer(
+            data=request.data, context=self.get_serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        payment_input = PaymentInputSerializer(data=request.data.get("payment") or None)
+        payment_data = None
+        if request.data.get("payment"):
+            payment_input.is_valid(raise_exception=True)
+            payment_data = payment_input.validated_data
+        membership = save_membership(
+            Membership(branch=self.get_branch(), created_by=request.user, **data)
+        )
+        self.record_audit("created", membership, after=snapshot(membership))
+        if payment_data:
+            payment = record_payment(
+                student=membership.student, membership=membership, by=request.user, **payment_data
+            )
+            audit.record(
+                request,
+                "payment.created",
+                entity="payment",
+                entity_id=payment.pk,
+                after=snapshot(payment),
+            )
+        return self._read(membership, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
