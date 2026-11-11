@@ -1,0 +1,83 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import { vi } from 'vitest'
+import App from '@/App'
+import type { Me } from '@/lib/auth'
+
+export function renderApp(route: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[route]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  return { queryClient, ...result }
+}
+
+interface MockResponse {
+  status?: number
+  body?: unknown
+}
+
+type Handler = MockResponse | ((body: unknown) => MockResponse)
+
+export interface RecordedCall {
+  method: string
+  path: string
+  body: unknown
+  headers: Record<string, string>
+}
+
+/** Replace fetch with a table of "METHOD /path" handlers and record every call. */
+export function mockApi(routes: Record<string, Handler>) {
+  const calls: RecordedCall[] = []
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const path = new URL(url, 'http://localhost').pathname
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const body = init?.body ? JSON.parse(String(init.body)) : undefined
+    calls.push({ method, path, body, headers: (init?.headers ?? {}) as Record<string, string> })
+
+    const handler = routes[`${method} ${path}`]
+    const result: MockResponse = handler
+      ? typeof handler === 'function'
+        ? handler(body)
+        : handler
+      : { status: 404, body: { detail: `No mock for ${method} ${path}` } }
+    const status = result.status ?? 200
+    return new Response(status === 204 ? null : JSON.stringify(result.body ?? {}), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return { calls }
+}
+
+export const NOT_SIGNED_IN: MockResponse = {
+  status: 403,
+  body: { detail: 'Authentication credentials were not provided.' },
+}
+
+export const student: Me = {
+  id: 1,
+  full_name: 'Asha Kumari',
+  mobile: '98XXXXXX10',
+  email: null,
+  role: 'STUDENT',
+  can_export: false,
+}
+
+export const owner: Me = {
+  id: 2,
+  full_name: 'Library Owner',
+  mobile: '91XXXXXX80',
+  email: 'owner@example.com',
+  role: 'SUPER_ADMIN',
+  can_export: true,
+}

@@ -1,0 +1,48 @@
+[project]
+name = "manju-library-backend"
+version = "0.1.0"
+description = "Manju Library API: Django + Django REST Framework"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django[argon2]>=5.2,<5.3",
+    "djangorestframework>=3.16",
+    "django-environ>=0.12",
+    "psycopg[binary]>=3.2",
+    "django-otp>=1.6",
+    "celery[redis]>=5.5",
+    "redis>=5.2",
+    "gunicorn>=23",
+    "whitenoise>=6.9",
+    "cryptography>=44",
+    "sentry-sdk[django,celery]>=2.20",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.10",
+    "ruff>=0.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings_test"
+python_files = ["test_*.py"]
+addopts = "-q --strict-markers"
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ", "S"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106"]
+"conftest.py" = ["S105"]
+"config/settings_test.py" = ["S105"]

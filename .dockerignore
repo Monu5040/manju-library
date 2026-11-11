@@ -1,0 +1,8 @@
+# Build context for deploy/nginx/Dockerfile is the repository root.
+.git
+**/node_modules
+frontend/dist
+backend
+deploy/.env
+**/.env
+**/.DS_Store

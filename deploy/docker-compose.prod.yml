@@ -1,0 +1,96 @@
+# Staging and production stack for one VM. Run from this folder with a filled-in .env:
+#   docker compose -f docker-compose.prod.yml up -d
+# PostgreSQL is a managed service outside this file (DATABASE_URL in .env).
+name: manju-library
+
+x-django: &django
+  build:
+    context: ../backend
+  image: manju-library/backend:${IMAGE_TAG:-latest}
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  backend:
+    <<: *django
+
+  worker:
+    <<: *django
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    healthcheck:
+      disable: true
+
+  beat:
+    <<: *django
+    command:
+      ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    healthcheck:
+      disable: true
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: deploy/nginx/Dockerfile
+    image: manju-library/web:${IMAGE_TAG:-latest}
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?Set SERVER_NAME in deploy/.env}
+    volumes:
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Renews the HTTPS certificate; the first one comes from scripts/init-letsencrypt.sh.
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+    restart: unless-stopped
+
+  # Nightly database backup to object storage, run by cron on the host:
+  #   docker compose -f docker-compose.prod.yml --profile backup run --rm backup
+  backup:
+    build: ./backup
+    image: manju-library/backup:${IMAGE_TAG:-latest}
+    env_file: .env
+    profiles: ["backup"]
+
+volumes:
+  letsencrypt:
+  certbot-www:
+  redis-data:

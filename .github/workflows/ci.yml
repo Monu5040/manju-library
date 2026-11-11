@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: manju
+          POSTGRES_PASSWORD: manju
+          POSTGRES_DB: manju
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manju -d manju"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://manju:manju@localhost:5432/manju
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        run: uv sync --frozen
+      - name: Lint and format
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Migrations match the models
+        run: uv run python manage.py makemigrations --check --dry-run
+      - name: Production settings checklist
+        run: |
+          export ENVIRONMENT=production
+          export ALLOWED_HOSTS=library.example.com
+          export SMS_BACKEND=core.sms.ProviderPlaceholder
+          export SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          export FIELD_ENCRYPTION_KEYS="$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
+          uv run python manage.py check --deploy --fail-level WARNING
+      - name: Tests
+        run: uv run pytest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  images:
+    name: Docker images and deploy files
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          load: true
+          tags: manju-library/backend:ci
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Web image (React app + Nginx)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/nginx/Dockerfile
+          load: true
+          tags: manju-library/web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Nginx configuration is valid
+        run: |
+          mkdir -p certs/live/library.example.com
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=library.example.com" \
+            -keyout certs/live/library.example.com/privkey.pem \
+            -out certs/live/library.example.com/fullchain.pem
+          docker run --rm -e SERVER_NAME=library.example.com \
+            -v "$PWD/certs:/etc/letsencrypt:ro" --add-host backend:127.0.0.1 \
+            manju-library/web:ci nginx -t
+      - name: Production Compose file is valid
+        working-directory: deploy
+        run: cp .env.example .env && docker compose -f docker-compose.prod.yml config --quiet
+      - name: Shell scripts
+        run: shellcheck -s sh deploy/scripts/*.sh deploy/backup/*.sh deploy/nginx/docker-entrypoint.d/*.sh
