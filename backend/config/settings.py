@@ -41,12 +41,17 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
+    "django_filters",
     "django_otp",
     "django_otp.plugins.otp_totp",
     "core",
     "accounts",
     "audit",
+    "library",
+    "members",
+    "billing",
 ]
 
 MIDDLEWARE = [
@@ -150,6 +155,14 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.Pagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    # Rupee amounts as JSON numbers, not strings.
+    "COERCE_DECIMAL_TO_STRING": False,
     "DEFAULT_THROTTLE_RATES": {
         "otp_request_mobile": env("THROTTLE_OTP_REQUEST_MOBILE", default="5/hour"),
         "otp_request_ip": env("THROTTLE_OTP_REQUEST_IP", default="30/hour"),
@@ -161,6 +174,7 @@ REST_FRAMEWORK = {
     # Number of reverse proxies in front of Django (Nginx = 1). Used to read the client IP.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
 }
 if DEBUG:
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"].append(

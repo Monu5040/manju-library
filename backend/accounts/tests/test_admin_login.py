@@ -35,7 +35,7 @@ def test_first_login_connects_an_authenticator_app(api, super_admin):
     assert api.get("/api/auth/me/").status_code == 200
     overview = api.get("/api/admin/overview/")
     assert overview.status_code == 200
-    assert overview.json() == {"users": {"students": 0, "staff": 0, "super_admins": 1}}
+    assert overview.json()["users"] == {"students": 0, "staff": 0, "super_admins": 1}
     assert AuditLog.objects.filter(action="auth.totp_connected", actor=super_admin).exists()
 
 

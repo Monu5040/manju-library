@@ -1,7 +1,23 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
 from accounts import views as accounts_views
+from billing.views import PaymentViewSet
 from core import views as core_views
+from library.views import BranchViewSet, PlanViewSet, SeatViewSet, ShiftViewSet
+from members import views as members_views
+
+admin_router = DefaultRouter(trailing_slash=True)
+admin_router.include_root_view = False
+admin_router.register("branches", BranchViewSet, basename="branch")
+admin_router.register("shifts", ShiftViewSet, basename="shift")
+admin_router.register("seats", SeatViewSet, basename="seat")
+admin_router.register("plans", PlanViewSet, basename="plan")
+admin_router.register("students", members_views.StudentViewSet, basename="student")
+admin_router.register("memberships", members_views.MembershipViewSet, basename="membership")
+admin_router.register("waitlist", members_views.WaitlistViewSet, basename="waitlist")
+admin_router.register("payments", PaymentViewSet, basename="payment")
+admin_router.register("staff", accounts_views.StaffViewSet, basename="staff")
 
 urlpatterns = [
     path("health/", core_views.HealthView.as_view(), name="health"),
@@ -9,6 +25,7 @@ urlpatterns = [
     path("auth/csrf/", accounts_views.CsrfView.as_view(), name="auth-csrf"),
     path("auth/me/", accounts_views.MeView.as_view(), name="auth-me"),
     path("auth/logout/", accounts_views.LogoutView.as_view(), name="auth-logout"),
+    path("auth/password/", accounts_views.PasswordChangeView.as_view(), name="auth-password"),
     # Students: one-time code by SMS
     path("auth/otp/request/", accounts_views.OtpRequestView.as_view(), name="auth-otp-request"),
     path("auth/otp/verify/", accounts_views.OtpVerifyView.as_view(), name="auth-otp-verify"),
@@ -25,5 +42,8 @@ urlpatterns = [
         name="auth-admin-totp-verify",
     ),
     # Admin area
-    path("admin/overview/", accounts_views.AdminOverviewView.as_view(), name="admin-overview"),
+    path("admin/overview/", members_views.DashboardView.as_view(), name="admin-overview"),
+    path("admin/admissions/", members_views.AdmissionView.as_view(), name="admin-admission"),
+    path("admin/seat-map/", members_views.SeatMapView.as_view(), name="admin-seat-map"),
+    path("admin/", include(admin_router.urls)),
 ]

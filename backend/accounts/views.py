@@ -14,29 +14,35 @@ import base64
 import time
 
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
-from django.db.models import Count
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django_otp import login as otp_login
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 
 from audit import services as audit
+from audit.mixins import AuditedViewSetMixin
 from core.sms import send_sms
 
 from . import otp
 from .models import ADMIN_ROLES, Role, User
-from .permissions import IsAdminOrStaff
+from .permissions import IsAdminOrStaff, IsSuperAdmin
 from .serializers import (
     AdminLoginSerializer,
     MeSerializer,
     OtpRequestSerializer,
     OtpVerifySerializer,
+    PasswordChangeSerializer,
+    StaffSerializer,
     TotpTokenSerializer,
 )
 from .throttles import (
@@ -288,26 +294,56 @@ class TotpVerifyView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# Admin area
+# Staff accounts (Super Admin) and changing one's own password
 # ---------------------------------------------------------------------------
 
 
-class AdminOverviewView(APIView):
+class StaffViewSet(AuditedViewSetMixin, ModelViewSet):
+    queryset = User.objects.filter(role__in=ADMIN_ROLES).order_by("full_name")
+    serializer_class = StaffSerializer
+    permission_classes = [IsSuperAdmin]
+    pagination_class = None
+    http_method_names = ["get", "post", "patch", "head", "options"]
+    audit_entity = "staff"
+
+    def perform_update(self, serializer):
+        user = serializer.instance
+        if user == self.request.user:
+            if serializer.validated_data.get("is_active") is False:
+                raise ValidationError({"is_active": "You cannot switch off your own account."})
+            if serializer.validated_data.get("role", user.role) != Role.SUPER_ADMIN:
+                raise ValidationError({"role": "You cannot remove your own Super Admin role."})
+        super().perform_update(serializer)
+
+    @action(detail=True, methods=["post"], url_path="reset-authenticator")
+    def reset_authenticator(self, request, pk=None):
+        """For a lost phone: the person connects a new app at their next sign-in."""
+        user = self.get_object()
+        deleted, _ = TOTPDevice.objects.filter(user=user).delete()
+        self.record_audit("authenticator_reset", user, metadata={"devices_removed": deleted})
+        return Response(
+            {"detail": f"{user.full_name} will connect a new authenticator app at next sign-in."}
+        )
+
+
+class PasswordChangeView(APIView):
+    """Signed-in admins and staff change their own password."""
+
     permission_classes = [IsAdminOrStaff]
 
-    def get(self, request):
-        counts = dict(
-            User.objects.filter(is_active=True)
-            .order_by()
-            .values_list("role")
-            .annotate(total=Count("id"))
-        )
-        return Response(
-            {
-                "users": {
-                    "students": counts.get(Role.STUDENT, 0),
-                    "staff": counts.get(Role.STAFF, 0),
-                    "super_admins": counts.get(Role.SUPER_ADMIN, 0),
-                }
-            }
-        )
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data["current_password"]):
+            raise ValidationError({"current_password": ["Your current password is not right."]})
+        new_password = serializer.validated_data["new_password"]
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            raise ValidationError({"new_password": exc.messages}) from exc
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        update_session_auth_hash(request, user)
+        audit.record(request, "auth.password_changed", actor=user)
+        return Response({"detail": "Password changed."})

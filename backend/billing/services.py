@@ -1,0 +1,53 @@
+"""Recording and voiding payments, with gap-free receipt numbers per branch."""
+
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Max
+from django.utils import timezone
+
+from library.models import Branch
+
+from .models import Payment, ReceiptSequence
+
+
+def next_receipt_number(branch: Branch) -> int:
+    """Take the next receipt number under a row lock, so concurrent payments never collide."""
+    sequence, _ = ReceiptSequence.objects.select_for_update().get_or_create(branch=branch)
+    highest = Payment.objects.filter(branch=branch).aggregate(top=Max("receipt_no"))["top"] or 0
+    number = max(sequence.next_number, highest + 1)
+    sequence.next_number = number + 1
+    sequence.save(update_fields=["next_number"])
+    return number
+
+
+@transaction.atomic
+def record_payment(*, student, amount, by=None, membership=None, **fields) -> Payment:
+    if amount is None or amount <= 0:
+        raise ValidationError({"amount": "Enter an amount above zero."})
+    if membership is not None and membership.student_id != student.pk:
+        raise ValidationError({"membership": "This membership belongs to another student."})
+    payment = Payment(
+        branch=student.branch,
+        student=student,
+        membership=membership,
+        amount=amount,
+        collected_by=by,
+        receipt_no=next_receipt_number(student.branch),
+        **fields,
+    )
+    payment.save()
+    return payment
+
+
+@transaction.atomic
+def void_payment(payment: Payment, *, reason: str, by=None) -> Payment:
+    if payment.is_void:
+        raise ValidationError({"detail": "This payment is already void."})
+    if not reason.strip():
+        raise ValidationError({"reason": "Say why the payment is being voided."})
+    payment.is_void = True
+    payment.void_reason = reason.strip()
+    payment.voided_by = by
+    payment.voided_at = timezone.now()
+    payment.save(update_fields=["is_void", "void_reason", "voided_by", "voided_at"])
+    return payment
