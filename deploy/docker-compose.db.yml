@@ -1,0 +1,44 @@
+# Optional: PostgreSQL on the same VM, for staging or until a managed database is ready.
+# Turn it on in deploy/.env with:
+#   COMPOSE_FILE=docker-compose.prod.yml:docker-compose.db.yml
+#   POSTGRES_PASSWORD=<long random value>
+#   DATABASE_URL=postgres://manju:<same password>@db:5432/manju
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: manju
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: manju
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manju -d manju"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  backend:
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    depends_on:
+      db:
+        condition: service_healthy
+
+  beat:
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

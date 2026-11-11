@@ -110,8 +110,11 @@ jobs:
           docker run --rm -e SERVER_NAME=library.example.com \
             -v "$PWD/certs:/etc/letsencrypt:ro" --add-host backend:127.0.0.1 \
             manju-library/web:ci nginx -t
-      - name: Production Compose file is valid
+      - name: Production Compose files are valid
         working-directory: deploy
-        run: cp .env.example .env && docker compose -f docker-compose.prod.yml config --quiet
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.prod.yml config --quiet
+          POSTGRES_PASSWORD=ci docker compose -f docker-compose.prod.yml -f docker-compose.db.yml config --quiet
       - name: Shell scripts
         run: shellcheck -s sh deploy/scripts/*.sh deploy/backup/*.sh deploy/nginx/docker-entrypoint.d/*.sh

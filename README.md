@@ -69,11 +69,13 @@ AES-256-GCM, using keys from `FIELD_ENCRYPTION_KEYS` (several keys allow rotatio
 
 ## Deploying
 
-One VM with Docker (E2E Networks or any VPS), managed PostgreSQL, and S3-compatible storage
-for backups.
+One VM with Docker (E2E Networks or any VPS), PostgreSQL (managed, or on the VM with
+`deploy/docker-compose.db.yml`), and S3-compatible storage for backups. Run the commands below
+from the `deploy/` folder; `COMPOSE_FILE` in `deploy/.env` tells `docker compose` which files
+to use.
 
-1. Point the domain's DNS at the VM. Install Docker and clone this repository, for example to
-   `/srv/manju-library`.
+1. Point the domain's DNS at the VM; without a domain, `<ip-with-dashes>.sslip.io` works.
+   Install Docker and clone this repository, for example to `/srv/manju-library`.
 2. `cp deploy/.env.example deploy/.env` and fill it in. Generate `SECRET_KEY` and
    `FIELD_ENCRYPTION_KEYS` as the comments say, and keep a copy of the encryption key in a
    password manager: without it, encrypted data cannot be read.
@@ -81,10 +83,9 @@ for backups.
 4. Deploy: `deploy/scripts/deploy.sh`. It builds, migrates (running the safety checks), restarts
    and waits for the health check. To roll back, run `deploy/scripts/deploy.sh <older-commit-sha>`.
    Migrations must stay compatible with the previous release.
-5. Create the owner's account:
-   `docker compose -f deploy/docker-compose.prod.yml exec backend python manage.py createsuperuser`
+5. Create the owner's account: `docker compose exec backend python manage.py createsuperuser`
 6. Nightly backup with 30-day retention. Add to the server's crontab:
-   `30 2 * * * cd /srv/manju-library/deploy && docker compose -f docker-compose.prod.yml --profile backup run --rm backup >> /var/log/manju-backup.log 2>&1`
+   `30 2 * * * cd /srv/manju-library/deploy && docker compose --profile backup run --rm backup >> /var/log/manju-backup.log 2>&1`
 7. Once a month, prove the backups restore. Run `pg_restore_check.sh` in the same image, with
    `RESTORE_DATABASE_URL` set to a scratch database (never the live one).
 

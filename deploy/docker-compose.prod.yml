@@ -1,6 +1,6 @@
-# Staging and production stack for one VM. Run from this folder with a filled-in .env:
-#   docker compose -f docker-compose.prod.yml up -d
-# PostgreSQL is a managed service outside this file (DATABASE_URL in .env).
+# Staging and production stack for one VM. From the deploy/ folder, with a filled-in .env
+# (whose COMPOSE_FILE picks this file), plain `docker compose ...` commands work.
+# PostgreSQL is a managed service (DATABASE_URL), or runs on the VM via docker-compose.db.yml.
 name: manju-library
 
 x-django: &django
@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
 
   # Nightly database backup to object storage, run by cron on the host:
-  #   docker compose -f docker-compose.prod.yml --profile backup run --rm backup
+  #   cd deploy && docker compose --profile backup run --rm backup
   backup:
     build: ./backup
     image: manju-library/backup:${IMAGE_TAG:-latest}
