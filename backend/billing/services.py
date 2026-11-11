@@ -21,18 +21,27 @@ def next_receipt_number(branch: Branch) -> int:
 
 
 @transaction.atomic
-def record_payment(*, student, amount, by=None, membership=None, **fields) -> Payment:
+def record_payment(
+    *, student, amount, by=None, membership=None, receipt_no: int | None = None, **fields
+) -> Payment:
+    """
+    Save a payment. `receipt_no` keeps a number from the old records when importing; it is
+    used only if still free, otherwise the next number is taken.
+    """
     if amount is None or amount <= 0:
         raise ValidationError({"amount": "Enter an amount above zero."})
     if membership is not None and membership.student_id != student.pk:
         raise ValidationError({"membership": "This membership belongs to another student."})
+    branch = student.branch
+    if not receipt_no or Payment.objects.filter(branch=branch, receipt_no=receipt_no).exists():
+        receipt_no = next_receipt_number(branch)
     payment = Payment(
-        branch=student.branch,
+        branch=branch,
         student=student,
         membership=membership,
         amount=amount,
         collected_by=by,
-        receipt_no=next_receipt_number(student.branch),
+        receipt_no=receipt_no,
         **fields,
     )
     payment.save()

@@ -2,6 +2,7 @@ import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { DueBadge, StateBadge } from '@/components/admin/badges'
+import { ExportMenu } from '@/components/admin/ExportMenu'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,13 +44,8 @@ export default function StudentsPage() {
     setSearchParams(next, { replace: true })
   }
 
-  const students = useStudents({
-    ...(VIEWS[view] ?? VIEWS.active).params,
-    q: searchParams.get('q') ?? '',
-    shift,
-    page,
-    page_size: PAGE_SIZE,
-  })
+  const filters = { ...(VIEWS[view] ?? VIEWS.active).params, q: searchParams.get('q') ?? '', shift }
+  const students = useStudents({ ...filters, page, page_size: PAGE_SIZE })
 
   return (
     <div>
@@ -57,9 +53,12 @@ export default function StudentsPage() {
         title="Students"
         description={students.data ? `${students.data.count} found` : undefined}
         actions={
-          <Button asChild>
-            <Link to="/admin/students/new">New admission</Link>
-          </Button>
+          <>
+            <ExportMenu path="/admin/students/export/" params={filters} aadhaar />
+            <Button asChild>
+              <Link to="/admin/students/new">New admission</Link>
+            </Button>
+          </>
         }
       />
 

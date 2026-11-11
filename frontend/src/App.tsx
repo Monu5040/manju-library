@@ -23,6 +23,8 @@ const StaffPage = lazy(() => import('@/pages/admin/StaffPage'))
 const StudentDetailPage = lazy(() => import('@/pages/admin/StudentDetailPage'))
 const StudentsPage = lazy(() => import('@/pages/admin/StudentsPage'))
 const WaitlistPage = lazy(() => import('@/pages/admin/WaitlistPage'))
+const ImportPage = lazy(() => import('@/pages/admin/ImportPage'))
+const ImportJobPage = lazy(() => import('@/pages/admin/ImportJobPage'))
 
 export default function App() {
   return (
@@ -63,6 +65,22 @@ export default function App() {
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="payments/:id/receipt" element={<ReceiptPage />} />
         <Route path="waitlist" element={<WaitlistPage />} />
+        <Route
+          path="import"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <ImportPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="import/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <ImportJobPage />
+            </RequireRole>
+          }
+        />
         <Route path="settings" element={<SettingsPage />} />
         <Route
           path="staff"

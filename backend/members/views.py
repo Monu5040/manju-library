@@ -7,18 +7,19 @@ from django.db.models import Prefetch, Sum
 from django.utils import timezone
 from rest_framework import mixins, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from accounts.models import Role, User
-from accounts.permissions import AdminArea
+from accounts.permissions import AdminArea, CanExport
 from audit import services as audit
 from audit.mixins import AuditedViewSetMixin, snapshot
 from billing.models import Payment
 from billing.serializers import PaymentSerializer
 from billing.services import record_payment
+from core.exports import Column, file_response
 from library.branching import BranchScopedMixin, current_branch
 from library.models import Seat, Shift
 
@@ -34,8 +35,58 @@ from .serializers import (
     StudentSerializer,
     StudentWriteSerializer,
     WaitlistEntrySerializer,
+    pick_current,
 )
 from .services import create_student, renew_membership, save_membership
+
+STUDENT_EXPORT_COLUMNS = [
+    Column("roll_no", "Roll No.", "int", 9),
+    Column("full_name", "Name", "text", 24),
+    Column("father_name", "Father's Name", "text", 24),
+    Column("gender", "Gender", "text", 9),
+    Column("mobile", "Mobile No.", "text", 13),
+    Column("alt_mobile", "Other Mobile", "text", 13),
+    Column("aadhaar", "Aadhaar No.", "text", 16),
+    Column("admission_date", "Admission Date", "date", 13),
+    Column("status", "Status", "text", 10),
+    Column("seat", "Seat No.", "text", 8),
+    Column("shift", "Study Shift", "text", 22),
+    Column("plan", "Plan", "text", 16),
+    Column("start_date", "Re-newed Date", "date", 13),
+    Column("end_date", "Expiry Date", "date", 13),
+    Column("days_left", "Days Left", "int", 9),
+    Column("price", "Shift Charge", "money", 12),
+    Column("paid", "Fee Deposited", "money", 13),
+    Column("due", "Due Amount", "money", 12),
+]
+
+
+def student_export_row(student: Student, full_aadhaar: bool) -> dict:
+    current = pick_current(list(student.memberships.all()))
+    row = {
+        "roll_no": student.roll_no,
+        "full_name": student.full_name,
+        "father_name": student.father_name,
+        "gender": student.get_gender_display() if student.gender else "",
+        "mobile": student.mobile,
+        "alt_mobile": student.alt_mobile,
+        "aadhaar": student.aadhaar if full_aadhaar else student.aadhaar_masked,
+        "admission_date": student.admission_date,
+        "status": student.get_status_display(),
+    }
+    if current is not None:
+        row.update(
+            seat=current.seat.number if current.seat else "",
+            shift=current.shift.name if current.shift else current.time_label,
+            plan=current.plan.name if current.plan else "",
+            start_date=current.start_date,
+            end_date=current.end_date,
+            days_left=current.days_left,
+            price=current.net_fee,
+            paid=current.paid_total,
+            due=current.due_total,
+        )
+    return row
 
 
 def memberships_with_totals():
@@ -91,6 +142,32 @@ class StudentViewSet(BranchScopedMixin, AuditedViewSetMixin, ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return self._read(instance)
+
+    @action(detail=False, methods=["get"], permission_classes=[CanExport])
+    def export(self, request):
+        """The filtered student list as Excel or CSV. Aadhaar is masked unless the owner asks."""
+        full_aadhaar = request.query_params.get("include_full_aadhaar") == "1"
+        if full_aadhaar and request.user.role != Role.SUPER_ADMIN:
+            raise PermissionDenied("Only the Super Admin can export full Aadhaar numbers.")
+        students = list(self.filter_queryset(self.get_queryset()))
+        rows = [student_export_row(s, full_aadhaar) for s in students]
+        audit.record(
+            request,
+            "export.students",
+            entity="student",
+            metadata={
+                "rows": len(rows),
+                "filters": {k: v for k, v in request.query_params.items() if k != "file_type"},
+                "full_aadhaar": full_aadhaar,
+            },
+        )
+        return file_response(
+            STUDENT_EXPORT_COLUMNS,
+            rows,
+            name=f"students-{timezone.localdate():%Y-%m-%d}",
+            file_type=request.query_params.get("file_type", "xlsx"),
+            sheet="Students",
+        )
 
     @action(detail=True, methods=["post"], url_path="reveal-aadhaar")
     def reveal_aadhaar(self, request, pk=None):

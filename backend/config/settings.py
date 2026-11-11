@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "library",
     "members",
     "billing",
+    "imports",
 ]
 
 MIDDLEWARE = [

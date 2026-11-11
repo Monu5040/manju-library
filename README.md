@@ -97,16 +97,37 @@ the Compose file and the shell scripts. Deploys are manual (`Actions → Deploy`
 workflow file lists the secrets each environment needs. Add required reviewers to the
 `production` environment.
 
-## Phase 0 status
+## What's built
 
-Done: repository, local one-command setup, CI, Docker images, HTTPS with renewal, backups,
-roles, both sign-in flows, audit log, encryption, safety checks, design system and the
-portal and admin shells.
+**Phase 0 — foundation:** one-command local setup, CI, Docker images, HTTPS with renewal,
+backups, roles, both sign-in flows, audit log, encryption, safety checks, design system.
 
-Waiting on decisions or accounts:
+**Phase 1 — admin core:**
 
-- **Domain and VMs** for staging and production.
-- **SMS provider** (MSG91 or Gupshup) with a DLT-registered sender ID and template. Then add
-  its backend in `core/sms.py`; until then only staging can run, with codes in the server log.
-- **Sentry** project (optional): set `SENTRY_DSN`.
-- **GitHub repository**, then the deploy secrets above.
+- Branch model from day one (one branch now), with a per-branch "share seats between
+  shifts" setting. Shifts can run past midnight.
+- Students with roll numbers, encrypted Aadhaar (checked with its checksum; masked; full
+  number for the Super Admin only, logged) and one portal login per mobile number.
+- Memberships: seat, shift or custom time, dates, fee, discount, dues, renewals, cancel.
+  PostgreSQL itself refuses a double-booked seat.
+- Payments with gap-free receipt numbers continuing from 1107, void (never delete),
+  printable receipts, totals by payment mode.
+- Admin screens: overview, students, admission, student page, seat map, renewals due,
+  payments, waiting list, settings, staff accounts, import, my account.
+- **Import** (Super Admin, `Import` in the menu): upload the existing Admission Sheet
+  (.xlsx, .xls or .csv). The app finds the title row, matches the columns, checks every
+  row without saving anything, and lists problems in plain words. Import everything, or
+  skip rows with errors and download them as an error file to fix. Undo within 7 days.
+- **Export** on the Students and Payments lists (Super Admin, or staff given export
+  rights): Excel or CSV of exactly what is filtered on screen.
+
+Staff can admit, renew and take payments; only the Super Admin deletes, voids, cancels,
+changes settings, imports or sees full Aadhaar numbers. Every change is in the audit log.
+
+## Still to do
+
+- **SMS provider** (MSG91 or Gupshup) with a DLT-registered sender ID and template; until
+  then the server runs as staging and student login codes go to the server log.
+- **Backups** to object storage (deliberately left for later).
+- Next phases: student portal details and online renewal (Razorpay), analytics, ledger
+  and expenses, WhatsApp/SMS reminders.

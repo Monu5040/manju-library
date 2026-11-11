@@ -205,3 +205,51 @@ export const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
   { value: 'BANK', label: 'Bank transfer' },
   { value: 'OTHER', label: 'Other' },
 ]
+
+export interface ImportRowInfo {
+  row_number: number
+  raw: Record<string, string>
+  result: 'READY' | 'ERROR' | 'IMPORTED' | 'SKIPPED'
+  errors: string[]
+  warnings: string[]
+}
+
+export interface ImportJob {
+  id: number
+  file_name: string
+  file_format: 'xlsx' | 'xls' | 'csv'
+  sheet: string
+  header_row: number
+  mapping: Record<string, number>
+  options: { create_missing?: boolean; day_first?: boolean }
+  status: 'CHECKED' | 'IMPORTED' | 'UNDONE'
+  summary: {
+    rows: number
+    ready: number
+    errors: number
+    with_warnings: number
+    imported: number
+    skipped: number
+    memberships: number
+    payments: number
+    waiting_list: number
+    amount_paid: string
+  }
+  created_by_name: string | null
+  created_at: string
+  imported_at: string | null
+  undone_at: string | null
+  can_undo: boolean
+}
+
+export interface ImportJobDetail extends ImportJob {
+  sheets: string[]
+  encoding: string
+  delimiter: string
+  columns: { index: number; header: string; field: string | null; ignored: boolean }[]
+  fields: { key: string; label: string }[]
+  preview: string[][]
+  problem_rows: ImportRowInfo[]
+  warning_rows: ImportRowInfo[]
+  duplicate_of?: { id: number; imported_at: string }
+}

@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from accounts import views as accounts_views
 from billing.views import PaymentViewSet
 from core import views as core_views
+from imports.views import ImportViewSet
 from library.views import BranchViewSet, PlanViewSet, SeatViewSet, ShiftViewSet
 from members import views as members_views
 
@@ -18,6 +19,7 @@ admin_router.register("memberships", members_views.MembershipViewSet, basename="
 admin_router.register("waitlist", members_views.WaitlistViewSet, basename="waitlist")
 admin_router.register("payments", PaymentViewSet, basename="payment")
 admin_router.register("staff", accounts_views.StaffViewSet, basename="staff")
+admin_router.register("imports", ImportViewSet, basename="import")
 
 urlpatterns = [
     path("health/", core_views.HealthView.as_view(), name="health"),

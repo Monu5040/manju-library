@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { ExportMenu } from '@/components/admin/ExportMenu'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,7 +41,11 @@ export default function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader title="Payments" description="Every payment with its receipt number. Void payments are struck through." />
+      <PageHeader
+        title="Payments"
+        description="Every payment with its receipt number. Void payments are struck through."
+        actions={<ExportMenu path="/admin/payments/export/" params={filters} />}
+      />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
         <form

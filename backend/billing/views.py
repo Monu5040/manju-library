@@ -1,19 +1,34 @@
 import django_filters
 from django.db.models import Count, Sum
+from django.utils import timezone
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from accounts.permissions import AdminArea
+from accounts.permissions import AdminArea, CanExport
 from audit import services as audit
 from audit.mixins import snapshot
+from core.exports import Column, file_response
 from library.branching import BranchScopedMixin
 from members.filters import search
 
 from .models import Payment
 from .serializers import PaymentCreateSerializer, PaymentSerializer, VoidSerializer
 from .services import record_payment, void_payment
+
+PAYMENT_EXPORT_COLUMNS = [
+    Column("receipt_no", "Receipt No.", "int", 11),
+    Column("paid_on", "Date", "date", 12),
+    Column("roll_no", "Roll No.", "int", 9),
+    Column("student", "Name", "text", 24),
+    Column("amount", "Amount", "money", 12),
+    Column("mode", "Paid By", "text", 12),
+    Column("reference", "Reference", "text", 18),
+    Column("taken_by", "Taken By", "text", 18),
+    Column("void", "Void", "text", 7),
+    Column("void_reason", "Void Reason", "text", 24),
+]
 
 
 class PaymentFilter(django_filters.FilterSet):
@@ -82,6 +97,41 @@ class PaymentViewSet(
             metadata={"reason": payment.void_reason, "amount": str(payment.amount)},
         )
         return Response(PaymentSerializer(payment).data)
+
+    @action(detail=False, methods=["get"], permission_classes=[CanExport])
+    def export(self, request):
+        payments = list(self.filter_queryset(self.get_queryset()))
+        rows = [
+            {
+                "receipt_no": p.receipt_no,
+                "paid_on": p.paid_on,
+                "roll_no": p.student.roll_no,
+                "student": p.student.full_name,
+                "amount": p.amount,
+                "mode": p.get_mode_display(),
+                "reference": p.reference,
+                "taken_by": p.collected_by.full_name if p.collected_by else "",
+                "void": "Yes" if p.is_void else "",
+                "void_reason": p.void_reason,
+            }
+            for p in payments
+        ]
+        audit.record(
+            request,
+            "export.payments",
+            entity="payment",
+            metadata={
+                "rows": len(rows),
+                "filters": {k: v for k, v in request.query_params.items() if k != "file_type"},
+            },
+        )
+        return file_response(
+            PAYMENT_EXPORT_COLUMNS,
+            rows,
+            name=f"payments-{timezone.localdate():%Y-%m-%d}",
+            file_type=request.query_params.get("file_type", "xlsx"),
+            sheet="Payments",
+        )
 
     @action(detail=False, methods=["get"])
     def summary(self, request):

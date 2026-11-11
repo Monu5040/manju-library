@@ -48,14 +48,16 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (method !== 'GET') {
     headers['X-CSRFToken'] = await csrfToken()
   }
-  if (body !== undefined) {
+  const isForm = body instanceof FormData
+  if (body !== undefined && !isForm) {
     headers['Content-Type'] = 'application/json'
   }
 
   const response = await fetch(`/api${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    // FormData (file uploads) sets its own multipart Content-Type with the boundary.
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     credentials: 'same-origin',
     signal,
   })
