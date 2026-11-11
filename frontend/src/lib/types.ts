@@ -253,3 +253,84 @@ export interface ImportJobDetail extends ImportJob {
   warning_rows: ImportRowInfo[]
   duplicate_of?: { id: number; imported_at: string }
 }
+
+// --- student portal --------------------------------------------------------------
+
+export interface PortalMembership {
+  id: number
+  seat_number: string | null
+  shift_name: string | null
+  plan_name: string | null
+  time_label: string
+  start_date: string
+  end_date: string
+  state: MembershipState
+  days_left: number
+  price: number
+  discount: number
+  net_fee: number
+  paid_total: number
+  due_total: number
+}
+
+export interface PortalStudent {
+  id: number
+  roll_no: number
+  full_name: string
+  father_name: string
+  mobile: string
+  alt_mobile: string
+  address: string
+  aadhaar_masked: string
+  admission_date: string | null
+  status: 'ACTIVE' | 'LEFT'
+  branch_name: string
+  current_membership: PortalMembership | null
+  total_due: number
+}
+
+export interface PortalPayment {
+  id: number
+  receipt_no: number
+  paid_on: string
+  amount: number
+  mode_label: string
+  reference: string
+  is_void: boolean
+}
+
+export interface Notice {
+  id: number
+  title: string
+  body: string
+  starts_on: string
+  ends_on: string | null
+  is_pinned: boolean
+  created_by_name?: string | null
+  created_at?: string
+}
+
+export interface LibraryInfo {
+  name: string
+  address: string
+  phone: string
+}
+
+export interface PortalHome {
+  profiles: PortalStudent[]
+  library: LibraryInfo | null
+  notices: Notice[]
+  shifts: { id: number; name: string; time_label: string; hours: number }[]
+  plans: { id: number; name: string; duration_months: number; shift_name: string | null; price: number }[]
+}
+
+export interface PortalStudentDetail extends PortalStudent {
+  memberships: PortalMembership[]
+  payments: PortalPayment[]
+}
+
+export interface PortalReceipt extends PortalPayment {
+  student_name: string
+  roll_no: number
+  library: LibraryInfo
+}

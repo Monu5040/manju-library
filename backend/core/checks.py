@@ -46,6 +46,16 @@ def deployment_settings_check(app_configs, **kwargs):
             )
         )
 
+    if settings.SMS_BACKEND == "core.sms.Msg91SMSBackend" and not (
+        settings.MSG91_AUTH_KEY and settings.MSG91_OTP_TEMPLATE_ID
+    ):
+        errors.append(
+            Error(
+                "MSG91 is chosen but MSG91_AUTH_KEY or MSG91_OTP_TEMPLATE_ID is missing.",
+                id="core.E005",
+            )
+        )
+
     if settings.DEBUG:
         errors.append(Error("DEBUG must be off in staging and production.", id="core.E004"))
 

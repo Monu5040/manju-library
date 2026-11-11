@@ -7,6 +7,7 @@ from core import views as core_views
 from imports.views import ImportViewSet
 from library.views import BranchViewSet, PlanViewSet, SeatViewSet, ShiftViewSet
 from members import views as members_views
+from portal import views as portal_views
 
 admin_router = DefaultRouter(trailing_slash=True)
 admin_router.include_root_view = False
@@ -20,6 +21,7 @@ admin_router.register("waitlist", members_views.WaitlistViewSet, basename="waitl
 admin_router.register("payments", PaymentViewSet, basename="payment")
 admin_router.register("staff", accounts_views.StaffViewSet, basename="staff")
 admin_router.register("imports", ImportViewSet, basename="import")
+admin_router.register("notices", portal_views.NoticeViewSet, basename="notice")
 
 urlpatterns = [
     path("health/", core_views.HealthView.as_view(), name="health"),
@@ -48,4 +50,12 @@ urlpatterns = [
     path("admin/admissions/", members_views.AdmissionView.as_view(), name="admin-admission"),
     path("admin/seat-map/", members_views.SeatMapView.as_view(), name="admin-seat-map"),
     path("admin/", include(admin_router.urls)),
+    # Student portal
+    path("portal/home/", portal_views.PortalHomeView.as_view(), name="portal-home"),
+    path(
+        "portal/students/<int:pk>/", portal_views.PortalStudentView.as_view(), name="portal-student"
+    ),
+    path(
+        "portal/receipts/<int:pk>/", portal_views.PortalReceiptView.as_view(), name="portal-receipt"
+    ),
 ]

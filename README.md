@@ -124,10 +124,22 @@ backups, roles, both sign-in flows, audit log, encryption, safety checks, design
 Staff can admit, renew and take payments; only the Super Admin deletes, voids, cancels,
 changes settings, imports or sees full Aadhaar numbers. Every change is in the audit log.
 
+**Phase 2 — student portal** (sign in with mobile number and SMS code):
+
+- Home: seat, timing, plan, days left with a renewal reminder, dues, and the library's
+  notices. Siblings who share a mobile number switch between their profiles.
+- Payment history with printable receipts, contact details the student can update
+  (address, other mobile number), and current fees and timings.
+- **Notices** in the admin menu: staff post and edit them, with optional start and end
+  dates and pinning; only the Super Admin deletes.
+- Real login-code SMS through MSG91 (`SMS_BACKEND=core.sms.Msg91SMSBackend`; settings in
+  `deploy/.env.example`). If MSG91 fails, the student is asked to try again in a minute and
+  the failure is logged.
+
 ## Still to do
 
-- **SMS provider** (MSG91 or Gupshup) with a DLT-registered sender ID and template; until
-  then the server runs as staging and student login codes go to the server log.
+- **Turn on MSG91**: a DLT-registered sender ID and OTP template, then the MSG91 settings
+  in `deploy/.env`. Until then the server runs as staging and login codes go to the server log.
 - **Backups** to object storage (deliberately left for later).
-- Next phases: student portal details and online renewal (Razorpay), analytics, ledger
-  and expenses, WhatsApp/SMS reminders.
+- Next phases: online renewal (Razorpay), analytics, ledger and expenses, WhatsApp/SMS
+  reminders.

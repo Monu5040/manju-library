@@ -51,7 +51,8 @@ jobs:
         run: |
           export ENVIRONMENT=production
           export ALLOWED_HOSTS=library.example.com
-          export SMS_BACKEND=core.sms.ProviderPlaceholder
+          export SMS_BACKEND=core.sms.Msg91SMSBackend
+          export MSG91_AUTH_KEY=ci-placeholder MSG91_OTP_TEMPLATE_ID=ci-placeholder
           export SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
           export FIELD_ENCRYPTION_KEYS="$(python3 -c 'import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
           uv run python manage.py check --deploy --fail-level WARNING

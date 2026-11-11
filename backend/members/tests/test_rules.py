@@ -94,7 +94,7 @@ def test_students_get_roll_numbers_encrypted_aadhaar_and_a_login(branch):
 
 
 def test_siblings_share_one_login(branch):
-    sister = create_student(branch=branch, full_name="Priti", mobile="9470000001")
+    sister = create_student(branch=branch, full_name="Kavya", mobile="9470000001")
     brother = create_student(branch=branch, full_name="Satya", mobile="9470000001")
     assert sister.account_id == brother.account_id
 

@@ -15,7 +15,12 @@ interface NavItem {
 }
 
 const NAV: Record<'portal' | 'admin', NavItem[]> = {
-  portal: [{ to: '/portal', label: 'Home', end: true }],
+  portal: [
+    { to: '/portal', label: 'Home', end: true },
+    { to: '/portal/payments', label: 'Payments' },
+    { to: '/portal/profile', label: 'My details' },
+    { to: '/portal/fees', label: 'Fees and timings' },
+  ],
   admin: [
     { to: '/admin', label: 'Overview', end: true },
     { to: '/admin/students', label: 'Students' },
@@ -23,6 +28,7 @@ const NAV: Record<'portal' | 'admin', NavItem[]> = {
     { to: '/admin/renewals', label: 'Renewals' },
     { to: '/admin/payments', label: 'Payments' },
     { to: '/admin/waitlist', label: 'Waiting list' },
+    { to: '/admin/notices', label: 'Notices' },
     { to: '/admin/import', label: 'Import', roles: ['SUPER_ADMIN'] },
     { to: '/admin/settings', label: 'Settings' },
     { to: '/admin/staff', label: 'Staff', roles: ['SUPER_ADMIN'] },
@@ -67,9 +73,18 @@ export function AppShell({ area }: { area: keyof typeof NAV }) {
               {logoutButton}
             </div>
           </div>
+          <nav aria-label="Main" className="mx-auto flex w-full max-w-4xl gap-1 overflow-x-auto px-3 pb-3">
+            {items.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
         </header>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
-          <Outlet />
+          <Suspense fallback={<Spinner label="Loading page" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     )

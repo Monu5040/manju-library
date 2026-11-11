@@ -25,6 +25,11 @@ const StudentsPage = lazy(() => import('@/pages/admin/StudentsPage'))
 const WaitlistPage = lazy(() => import('@/pages/admin/WaitlistPage'))
 const ImportPage = lazy(() => import('@/pages/admin/ImportPage'))
 const ImportJobPage = lazy(() => import('@/pages/admin/ImportJobPage'))
+const NoticesPage = lazy(() => import('@/pages/admin/NoticesPage'))
+const PortalPaymentsPage = lazy(() => import('@/pages/portal/PortalPaymentsPage'))
+const PortalReceiptPage = lazy(() => import('@/pages/portal/PortalReceiptPage'))
+const PortalProfilePage = lazy(() => import('@/pages/portal/PortalProfilePage'))
+const PortalFeesPage = lazy(() => import('@/pages/portal/PortalFeesPage'))
 
 export default function App() {
   return (
@@ -44,6 +49,10 @@ export default function App() {
         }
       >
         <Route index element={<PortalHomePage />} />
+        <Route path="payments" element={<PortalPaymentsPage />} />
+        <Route path="receipts/:id" element={<PortalReceiptPage />} />
+        <Route path="profile" element={<PortalProfilePage />} />
+        <Route path="fees" element={<PortalFeesPage />} />
       </Route>
 
       <Route
@@ -65,6 +74,7 @@ export default function App() {
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="payments/:id/receipt" element={<ReceiptPage />} />
         <Route path="waitlist" element={<WaitlistPage />} />
+        <Route path="notices" element={<NoticesPage />} />
         <Route
           path="import"
           element={

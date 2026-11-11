@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { mockApi, NOT_SIGNED_IN, renderApp, student } from '@/test/utils'
+import { mockApi, NOT_SIGNED_IN, portalHome, renderApp, student } from '@/test/utils'
 
 describe('Student login', () => {
   it('signs a student in with a mobile number and SMS code', async () => {
@@ -10,6 +10,7 @@ describe('Student login', () => {
       'GET /api/auth/me/': NOT_SIGNED_IN,
       'POST /api/auth/otp/request/': { status: 202, body: { detail: 'sent' } },
       'POST /api/auth/otp/verify/': { body: student },
+      'GET /api/portal/home/': { body: portalHome },
     })
     renderApp('/login')
 

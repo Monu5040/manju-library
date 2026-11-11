@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "members",
     "billing",
     "imports",
+    "portal",
 ]
 
 MIDDLEWARE = [
@@ -202,6 +203,13 @@ SMS_BACKEND = env("SMS_BACKEND", default="core.sms.ConsoleSMSBackend")
 SMS_SENDER_ID = env("SMS_SENDER_ID", default="MANJUL")
 # Staging only: allow the console backend (codes appear in server logs) until a provider is set up.
 SMS_CONSOLE_ALLOWED = env.bool("SMS_CONSOLE_ALLOWED", default=False)
+
+# MSG91 (SMS_BACKEND=core.sms.Msg91SMSBackend). The template must be DLT-approved.
+MSG91_AUTH_KEY = env("MSG91_AUTH_KEY", default="")
+MSG91_OTP_TEMPLATE_ID = env("MSG91_OTP_TEMPLATE_ID", default="")
+MSG91_CODE_VARIABLE = env("MSG91_CODE_VARIABLE", default="otp")
+MSG91_MINUTES_VARIABLE = env("MSG91_MINUTES_VARIABLE", default="")
+MSG91_API_URL = env("MSG91_API_URL", default="https://control.msg91.com/api/v5/flow/")
 
 # ---------------------------------------------------------------------------
 # Celery

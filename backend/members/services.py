@@ -46,12 +46,16 @@ def set_aadhaar(student: Student, raw: str) -> None:
 
 
 def ensure_login_account(student: Student) -> None:
-    """Link the student to the portal login for their mobile, creating it if needed."""
+    """
+    Link the student to the portal login for their mobile, creating it if needed.
+
+    A staff or admin login never gets student profiles. If the mobile belongs to one, the
+    student is left unlinked, which also drops any link to their previous number.
+    """
     account = User.objects.filter(mobile=student.mobile).first()
     if account is None:
         account = User.objects.create_user(student.mobile, full_name=student.full_name)
-    if account.role == Role.STUDENT:
-        student.account = account
+    student.account = account if account.role == Role.STUDENT else None
 
 
 def seat_conflicts(

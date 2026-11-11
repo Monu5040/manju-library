@@ -11,6 +11,7 @@ Login endpoints check the CSRF token even before anyone is signed in (login CSRF
 """
 
 import base64
+import logging
 import time
 
 from django.conf import settings
@@ -31,7 +32,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from audit import services as audit
 from audit.mixins import AuditedViewSetMixin
-from core.sms import send_sms
+from core.sms import SMSError, send_login_code
 
 from . import otp
 from .models import ADMIN_ROLES, Role, User
@@ -53,6 +54,8 @@ from .throttles import (
     OtpRequestMobileThrottle,
     OtpVerifyIpThrottle,
 )
+
+logger = logging.getLogger(__name__)
 
 AUTH_BACKEND = "accounts.backends.EmailOrMobileBackend"
 PENDING_ADMIN_KEY = "pending_admin_login"
@@ -120,11 +123,18 @@ class OtpRequestView(APIView):
         if user is not None:
             code = otp.issue_code(user)
             minutes = int(settings.LOGIN_CODE_TTL.total_seconds() // 60)
-            send_sms(
-                mobile,
-                f"{code} is your Manju Library login code. It expires in {minutes} minutes. "
-                "Do not share it with anyone.",
-            )
+            try:
+                send_login_code(mobile, code, minutes)
+            except SMSError:
+                logger.exception("Login code SMS failed", extra={"user_id": user.pk})
+                audit.record(request, "auth.otp_send_failed", actor=user)
+                return Response(
+                    {
+                        "detail": "We could not send the SMS right now. "
+                        "Please try again in a minute."
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
             audit.record(request, "auth.otp_sent", actor=user, entity="user", entity_id=user.pk)
 
         # Same answer whether or not the number is registered, so numbers cannot be probed.

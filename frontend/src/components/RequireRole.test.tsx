@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { mockApi, NOT_SIGNED_IN, overview, owner, renderApp, student } from '@/test/utils'
+import { mockApi, NOT_SIGNED_IN, overview, owner, portalHome, renderApp, student } from '@/test/utils'
 
 describe('Protected areas', () => {
   it('sends visitors who are not signed in to the student login', async () => {
@@ -17,7 +17,7 @@ describe('Protected areas', () => {
   })
 
   it('keeps students out of the admin area', async () => {
-    mockApi({ 'GET /api/auth/me/': { body: student } })
+    mockApi({ 'GET /api/auth/me/': { body: student }, 'GET /api/portal/home/': { body: portalHome } })
     renderApp('/admin')
     expect(await screen.findByRole('heading', { name: 'Hello, Asha' })).toBeInTheDocument()
   })

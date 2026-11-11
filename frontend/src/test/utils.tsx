@@ -96,3 +96,42 @@ export const overview = {
     waiting: 12,
   },
 }
+
+export const portalProfile = {
+  id: 1,
+  roll_no: 1,
+  full_name: 'Asha Kumari',
+  father_name: 'Ramesh',
+  mobile: '9876543210',
+  alt_mobile: '',
+  address: '',
+  aadhaar_masked: 'XXXX-XXXX-4321',
+  admission_date: '2026-11-01',
+  status: 'ACTIVE' as const,
+  branch_name: 'Manju Library',
+  current_membership: {
+    id: 5,
+    seat_number: '12',
+    shift_name: 'Day',
+    plan_name: '1 month · Day',
+    time_label: '10:15 AM – 6:30 PM',
+    start_date: '2026-11-01',
+    end_date: '2026-11-30',
+    state: 'ACTIVE' as const,
+    days_left: 5,
+    price: 450,
+    discount: 0,
+    net_fee: 450,
+    paid_total: 300,
+    due_total: 150,
+  },
+  total_due: 150,
+}
+
+export const portalHome = {
+  profiles: [portalProfile],
+  library: { name: 'Manju Library', address: 'Station Road', phone: '9000000000' },
+  notices: [{ id: 1, title: 'Closed on Diwali', body: 'The library is closed on 1 November.', starts_on: '2026-10-25', ends_on: null, is_pinned: true }],
+  shifts: [{ id: 1, name: 'Day', time_label: '10:15 AM – 6:30 PM', hours: 8.25 }],
+  plans: [{ id: 1, name: '1 month · Day', duration_months: 1, shift_name: 'Day', price: 450 }],
+}
