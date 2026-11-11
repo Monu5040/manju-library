@@ -118,3 +118,8 @@ jobs:
           POSTGRES_PASSWORD=ci docker compose -f docker-compose.prod.yml -f docker-compose.db.yml config --quiet
       - name: Shell scripts
         run: shellcheck -s sh deploy/scripts/*.sh deploy/backup/*.sh deploy/nginx/docker-entrypoint.d/*.sh
+      - name: Backend image works from a locked-down checkout (umask 027 servers)
+        run: |
+          chmod -R go-rwx backend
+          docker build -q -t manju-library/backend:locked backend
+          docker run --rm manju-library/backend:locked python manage.py check

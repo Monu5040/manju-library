@@ -20,6 +20,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 COPY . .
+# Copied files keep the server checkout's permissions. Hardened servers (umask 027) leave
+# them unreadable to other users, so open them up for the unprivileged app user below.
+RUN chmod -R a+rX /app
 
 # Static files for the Django admin back office, served by WhiteNoise.
 RUN ENVIRONMENT=build python manage.py collectstatic --noinput
