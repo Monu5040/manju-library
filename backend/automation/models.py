@@ -151,3 +151,20 @@ class Reminder(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_kind_display()} for {self.student} ({self.get_status_display()})"
+
+
+class JobRun(models.Model):
+    """One run of a scheduled job, so the owner can see that the jobs keep working."""
+
+    name = models.CharField(max_length=40)
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    ok = models.BooleanField(default=False)
+    summary = models.JSONField(default=dict, help_text="What the job did, or the error.")
+
+    class Meta:
+        ordering = ["-started_at"]
+        indexes = [models.Index(fields=["name", "-started_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.name} at {self.started_at:%Y-%m-%d %H:%M} ({'ok' if self.ok else 'failed'})"

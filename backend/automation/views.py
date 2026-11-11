@@ -12,13 +12,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from accounts.permissions import AdminArea
+from accounts.permissions import AdminArea, IsSuperAdmin
 from audit import services as audit
 from audit.mixins import changes, snapshot
 from library.branching import BranchScopedMixin, current_branch
 
 from . import services
 from .models import AutomationSettings, Reminder
+from .monitoring import system_status
 from .serializers import (
     AutomationSettingsSerializer,
     MarkSentSerializer,
@@ -133,3 +134,12 @@ class AutomationSettingsView(APIView):
                 after=new,
             )
         return Response(AutomationSettingsSerializer(conf).data)
+
+
+class SystemStatusView(APIView):
+    """The Super Admin's view of whether everything is running, and what is left before launch."""
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        return Response(system_status(quick=request.query_params.get("quick") == "1"))

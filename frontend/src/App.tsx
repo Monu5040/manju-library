@@ -32,6 +32,7 @@ const LedgerPage = lazy(() => import('@/pages/admin/LedgerPage'))
 const LedgerImportPage = lazy(() => import('@/pages/admin/LedgerImportPage'))
 const CashBookPage = lazy(() => import('@/pages/admin/CashBookPage'))
 const RemindersPage = lazy(() => import('@/pages/admin/RemindersPage'))
+const SystemPage = lazy(() => import('@/pages/admin/SystemPage'))
 const PortalPaymentsPage = lazy(() => import('@/pages/portal/PortalPaymentsPage'))
 const PortalReceiptPage = lazy(() => import('@/pages/portal/PortalReceiptPage'))
 const PortalProfilePage = lazy(() => import('@/pages/portal/PortalProfilePage'))
@@ -130,6 +131,14 @@ export default function App() {
           element={
             <RequireRole roles={['SUPER_ADMIN']}>
               <StaffPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="system"
+          element={
+            <RequireRole roles={['SUPER_ADMIN']}>
+              <SystemPage />
             </RequireRole>
           }
         />

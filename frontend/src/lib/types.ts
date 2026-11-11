@@ -610,3 +610,25 @@ export interface AutomationSettings {
   sms: Record<ReminderKind, boolean>
   placeholders: Record<string, string>
 }
+
+// --- system status ------------------------------------------------------------------------
+
+export type JobState = 'ok' | 'late' | 'failed' | 'waiting' | 'running'
+
+export interface SystemStatus {
+  version: string
+  environment: string
+  checked_at: string
+  checks: { label: string; ok: boolean; detail: string; ms: number }[]
+  jobs: {
+    name: string
+    label: string
+    schedule: string
+    state: JobState
+    last_run: string | null
+    last_success: string | null
+    summary: Record<string, unknown>
+  }[]
+  disk: { total_gb: number; free_gb: number; used_percent: number }
+  launch: { key: string; label: string; done: boolean | null }[]
+}

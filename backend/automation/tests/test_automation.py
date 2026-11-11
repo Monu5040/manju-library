@@ -269,11 +269,11 @@ def test_students_are_marked_left_only_when_turned_on(branch, shifts):
     WaitlistEntry.objects.create(branch=branch, student=waiting, position=1)
     Student.objects.update(created_at=timezone.now() - timedelta(days=120))
 
-    assert tasks.mark_students_left() == 0  # off unless chosen
+    assert tasks.mark_students_left() == {"marked": 0}  # off unless chosen
     conf = AutomationSettings.for_branch(branch)
     conf.mark_left_after_days = 60
     conf.save()
-    assert tasks.mark_students_left() == 1
+    assert tasks.mark_students_left() == {"marked": 1}
     gone.refresh_from_db()
     assert gone.status == "LEFT"
     assert Student.objects.get(pk=waiting.pk).status == "ACTIVE"
@@ -302,7 +302,7 @@ def test_old_import_files_and_rows_are_deleted_after_the_undo_window(branch):
         )
     ImportJob.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=8))
 
-    assert tasks.purge_old_import_data() == 1
+    assert tasks.purge_old_import_data() == {"files_deleted": 1}
     old.refresh_from_db()
     row = ImportRow.objects.get(job=old)
     assert old.content is None and row.raw == {} and row.values == {}

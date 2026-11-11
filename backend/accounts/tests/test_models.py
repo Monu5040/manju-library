@@ -55,6 +55,6 @@ def test_purge_task_removes_old_codes(student):
     fresh = LoginCode.objects.create(
         user=student, code_hash="y" * 64, expires_at=timezone.now() + timedelta(minutes=5)
     )
-    assert purge_expired_login_codes() == 1
+    assert purge_expired_login_codes() == {"deleted": 1}
     assert not LoginCode.objects.filter(pk=old.pk).exists()
     assert LoginCode.objects.filter(pk=fresh.pk).exists()

@@ -97,6 +97,39 @@ the Compose file and the shell scripts. Deploys are manual (`Actions → Deploy`
 workflow file lists the secrets each environment needs. Add required reviewers to the
 `production` environment.
 
+## Going live
+
+**Settings → System status** in the app shows a checklist of these steps and ticks them off.
+All settings below go in `deploy/.env` on the server; run `deploy/scripts/deploy.sh` after
+changing it.
+
+1. **Real SMS for student logins.** Register a sender ID and an OTP template on the DLT
+   portal, add the template in MSG91, then set `SMS_BACKEND=core.sms.Msg91SMSBackend`,
+   `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` (and `MSG91_CODE_VARIABLE` if the template's
+   variable is not `otp`). Optional reminder templates: `MSG91_TEMPLATE_<KIND>`, see
+   `deploy/.env.example`.
+2. **Production mode.** Delete `SMS_CONSOLE_ALLOWED`, set `ENVIRONMENT=production`. The
+   deploy stops with a clear message if anything production needs is missing.
+3. **Backups.** Fill in the `BACKUP_*` and `S3_*` settings, add the nightly cron line from
+   [Deploying](#deploying), and once a month prove a restore with `pg_restore_check.sh`.
+4. **Error alerts.** Create a free project on sentry.io and set `SENTRY_DSN`: every server
+   error then reaches you by email with the details needed to fix it.
+5. **Uptime monitor.** On a free service such as UptimeRobot or Better Stack, watch
+   `https://<your-domain>/api/health/` every 5 minutes with alerts to your phone. It answers
+   `200` only when the app, the database and Redis all work, and these services also warn
+   before the HTTPS certificate expires.
+6. **Your own domain (optional).** Point its DNS at the server, set `SERVER_NAME`, and run
+   `deploy/scripts/init-letsencrypt.sh` once.
+
+Then open **System status**: every service should say Working and every job On time.
+
+**Load test.** On a development machine, `uv run python manage.py seed_demo --students 400`
+makes a made-up library and `uv run python manage.py loadtest --url http://127.0.0.1:8017`
+sends realistic traffic to a running server (both refuse to run on staging or production).
+With 3 Gunicorn workers, as in production, 30 students and 3 admins at once got answers in
+4–80 ms (typical), and 100 students and 5 admins at once — far beyond a library's
+busiest hour — 349 requests a second with no errors.
+
 ## What's built
 
 **Phase 0 — foundation:** one-command local setup, CI, Docker images, HTTPS with renewal,

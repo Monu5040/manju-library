@@ -7,12 +7,18 @@ import { EmptyState, PageHeader, StatCard } from '@/components/ui/page'
 import { Spinner } from '@/components/ui/spinner'
 import { errorMessage } from '@/lib/api'
 import { formatDate, formatMoney } from '@/lib/format'
+import { useMe } from '@/lib/auth'
+import { useSystemStatus } from '@/lib/automation'
 import { useMemberships, useOverview } from '@/lib/queries'
 
 export default function AdminHomePage() {
   const overview = useOverview()
   const expiring = useMemberships({ expiring_within: 7, ordering: 'end_date', page_size: 8 })
   const stats = overview.data?.library
+  const { data: me } = useMe()
+  const system = useSystemStatus(true, me?.role === 'SUPER_ADMIN')
+  const trouble = system.data?.jobs.filter((j) => j.state === 'late' || j.state === 'failed') ?? []
+  const diskFull = (system.data?.disk.used_percent ?? 0) >= 90
 
   return (
     <div>
@@ -30,6 +36,15 @@ export default function AdminHomePage() {
         }
       />
 
+      {(trouble.length > 0 || diskFull) && (
+        <Alert variant="destructive" className="mb-6">
+          {trouble.length > 0 && `Something behind the scenes needs attention: ${trouble.map((j) => j.label.toLowerCase()).join(', ')}. `}
+          {diskFull && 'The server disk is nearly full. '}
+          <Link className="font-medium underline" to="/admin/system">
+            Open System status
+          </Link>
+        </Alert>
+      )}
       {overview.isPending && <Spinner label="Loading overview" />}
       {overview.error && <Alert variant="destructive">{errorMessage(overview.error)}</Alert>}
       {stats && (

@@ -1,5 +1,6 @@
 import logging
 
+from django.core.cache import cache
 from django.db import connection
 from django.http import JsonResponse
 from rest_framework.permissions import AllowAny
@@ -22,6 +23,14 @@ class HealthView(APIView):
         except Exception:
             logger.exception("Health check: database unavailable")
             return Response({"status": "error", "database": "unavailable"}, status=503)
+        # Redis holds the rate limits and the job queue: without it sign-ins fail.
+        try:
+            cache.set("health-check", "ok", 10)
+            if cache.get("health-check") != "ok":
+                raise RuntimeError("Redis did not return the stored value")
+        except Exception:
+            logger.exception("Health check: Redis unavailable")
+            return Response({"status": "error", "cache": "unavailable"}, status=503)
         return Response({"status": "ok"})
 
 

@@ -327,6 +327,9 @@ LOGGING = {
 # Error monitoring
 # ---------------------------------------------------------------------------
 
+# The deployed commit, shown on the System status page (set by deploy.sh through Compose).
+APP_VERSION = env("APP_VERSION", default="dev")
+
 SENTRY_DSN = env("SENTRY_DSN", default="")
 if SENTRY_DSN:
     import sentry_sdk

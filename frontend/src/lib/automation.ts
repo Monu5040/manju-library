@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import { type Params, withParams } from './queries'
-import type { AutomationSettings, Paginated, Reminder } from './types'
+import type { AutomationSettings, Paginated, Reminder, SystemStatus } from './types'
 
 // Keys start with 'admin', so useAdminMutation refreshes them after a change.
 
@@ -27,4 +27,12 @@ export const useFreeSeats = () =>
   useQuery({
     queryKey: ['admin', 'waitlist', 'free-seats'],
     queryFn: () => api<Record<string, string[]>>('/admin/waitlist/free-seats/'),
+  })
+
+export const useSystemStatus = (quick = false, enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'system', quick],
+    queryFn: () => api<SystemStatus>(withParams('/admin/system/', { quick: quick ? 1 : undefined })),
+    enabled,
+    staleTime: quick ? 5 * 60_000 : 0,
   })

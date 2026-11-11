@@ -60,6 +60,7 @@ urlpatterns = [
     path("admin/admissions/", members_views.AdmissionView.as_view(), name="admin-admission"),
     path("admin/seat-map/", members_views.SeatMapView.as_view(), name="admin-seat-map"),
     path("admin/ledger/daily/", ledger_views.DailyLedgerView.as_view(), name="admin-ledger-daily"),
+    path("admin/system/", automation_views.SystemStatusView.as_view(), name="admin-system"),
     path(
         "admin/automation/",
         automation_views.AutomationSettingsView.as_view(),

@@ -40,6 +40,7 @@ const NAV: Record<'portal' | 'admin', NavItem[]> = {
     { to: '/admin/import', label: 'Import', roles: ['SUPER_ADMIN'] },
     { to: '/admin/settings', label: 'Settings' },
     { to: '/admin/staff', label: 'Staff', roles: ['SUPER_ADMIN'] },
+    { to: '/admin/system', label: 'System status', roles: ['SUPER_ADMIN'] },
     { to: '/admin/account', label: 'My account' },
   ],
 }

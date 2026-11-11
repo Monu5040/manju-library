@@ -21,6 +21,7 @@ from library.models import Branch
 from members.models import Membership, Student, WaitlistEntry
 
 from .models import AutomationSettings
+from .monitoring import tracked
 from .services import build_reminders, send_by_sms, tidy_reminders
 
 IMPORT_DATA_DAYS = 7  # the import undo window
@@ -28,6 +29,7 @@ AADHAAR_IN_WARNING = re.compile(r"Aadhaar '[^']*'")
 
 
 @shared_task
+@tracked("reminders")
 def run_reminders() -> dict:
     summary = {}
     for branch in Branch.objects.filter(is_active=True):
@@ -40,7 +42,8 @@ def run_reminders() -> dict:
 
 
 @shared_task
-def mark_students_left() -> int:
+@tracked("mark-students-left")
+def mark_students_left() -> dict:
     """
     Students with no membership for the branch's chosen number of days become "left", so
     lists of current students stay accurate. Anyone waiting for a seat is kept. A new
@@ -76,11 +79,12 @@ def mark_students_left() -> int:
                 "rule": f"no membership for {conf.mark_left_after_days} days",
             },
         )
-    return marked
+    return {"marked": marked}
 
 
 @shared_task
-def purge_old_import_data() -> int:
+@tracked("import-cleanup")
+def purge_old_import_data() -> dict:
     """
     An uploaded sheet (with Aadhaar and mobile numbers) is only needed while an import can
     still be checked again or undone. After that the file and the rows read from it are
@@ -97,9 +101,11 @@ def purge_old_import_data() -> int:
         row.raw, row.values = {}, {}
         row.warnings = [AADHAAR_IN_WARNING.sub("Aadhaar (number removed)", w) for w in row.warnings]
         row.save(update_fields=["raw", "values", "warnings"])
-    return purged
+    return {"files_deleted": purged}
 
 
 @shared_task
-def clear_expired_sessions() -> None:
+@tracked("session-cleanup")
+def clear_expired_sessions() -> dict:
     call_command("clearsessions")
+    return {"done": True}
