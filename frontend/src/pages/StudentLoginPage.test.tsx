@@ -31,6 +31,19 @@ describe('Student login', () => {
     })
   })
 
+  it('shows the code on screen for a number on the test list', async () => {
+    const user = userEvent.setup()
+    mockApi({
+      'GET /api/auth/me/': NOT_SIGNED_IN,
+      'POST /api/auth/otp/request/': { status: 202, body: { detail: 'test', test_code: '482913' } },
+    })
+    renderApp('/login')
+    await user.type(screen.getByLabelText('Mobile number'), '98765 43210')
+    await user.click(screen.getByRole('button', { name: 'Send code' }))
+    expect(await screen.findByText('482913')).toBeInTheDocument()
+    expect(screen.getByText(/on the test list/)).toBeInTheDocument()
+  })
+
   it('checks the mobile number before calling the server', async () => {
     const user = userEvent.setup()
     const { calls } = mockApi({ 'GET /api/auth/me/': NOT_SIGNED_IN })

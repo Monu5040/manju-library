@@ -20,30 +20,39 @@ const codeForm = z.object({ code: sixDigitCodeSchema })
 
 export default function StudentLoginPage() {
   const [mobile, setMobile] = useState<string | null>(null)
+  // Only for numbers on the server's test list (never in production): the code is shown here.
+  const [testCode, setTestCode] = useState<string | null>(null)
 
   return (
     <AuthCard
       title="Student login"
       description={
         mobile
-          ? `We sent a 6-digit code to ${maskMobile(mobile)}. It works for 5 minutes.`
+          ? testCode
+            ? 'This number is on the test list, so your code is shown below instead of being sent by SMS.'
+            : `We sent a 6-digit code to ${maskMobile(mobile)}. It works for 5 minutes.`
           : 'Enter the mobile number you gave at admission. We will text you a login code.'
       }
     >
       {mobile === null ? (
-        <MobileStep onSent={setMobile} />
+        <MobileStep
+          onSent={(number, code) => {
+            setMobile(number)
+            setTestCode(code)
+          }}
+        />
       ) : (
-        <CodeStep mobile={mobile} onChangeNumber={() => setMobile(null)} />
+        <CodeStep mobile={mobile} testCode={testCode} onNewTestCode={setTestCode} onChangeNumber={() => setMobile(null)} />
       )}
     </AuthCard>
   )
 }
 
 function requestCode(mobile: string) {
-  return api('/auth/otp/request/', { method: 'POST', body: { mobile } })
+  return api<{ detail: string; test_code?: string }>('/auth/otp/request/', { method: 'POST', body: { mobile } })
 }
 
-function MobileStep({ onSent }: { onSent: (mobile: string) => void }) {
+function MobileStep({ onSent }: { onSent: (mobile: string, testCode: string | null) => void }) {
   const [serverError, setServerError] = useState<string | null>(null)
   const {
     register,
@@ -58,8 +67,8 @@ function MobileStep({ onSent }: { onSent: (mobile: string) => void }) {
     setServerError(null)
     const normalized = normalizeMobile(mobile)
     try {
-      await requestCode(normalized)
-      onSent(normalized)
+      const reply = await requestCode(normalized)
+      onSent(normalized, reply?.test_code ?? null)
     } catch (error) {
       setServerError(errorMessage(error))
     }
@@ -89,7 +98,17 @@ function MobileStep({ onSent }: { onSent: (mobile: string) => void }) {
   )
 }
 
-function CodeStep({ mobile, onChangeNumber }: { mobile: string; onChangeNumber: () => void }) {
+function CodeStep({
+  mobile,
+  testCode,
+  onNewTestCode,
+  onChangeNumber,
+}: {
+  mobile: string
+  testCode: string | null
+  onNewTestCode: (code: string | null) => void
+  onChangeNumber: () => void
+}) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -130,8 +149,9 @@ function CodeStep({ mobile, onChangeNumber }: { mobile: string; onChangeNumber: 
     setServerError(null)
     setNotice(null)
     try {
-      await requestCode(mobile)
-      setNotice('A new code is on its way.')
+      const reply = await requestCode(mobile)
+      onNewTestCode(reply?.test_code ?? null)
+      setNotice(reply?.test_code ? 'Here is a new code.' : 'A new code is on its way.')
       setSecondsLeft(RESEND_AFTER_SECONDS)
     } catch (error) {
       setServerError(errorMessage(error))
@@ -142,6 +162,12 @@ function CodeStep({ mobile, onChangeNumber }: { mobile: string; onChangeNumber: 
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {serverError && <Alert variant="destructive">{serverError}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
+      {testCode && (
+        <Alert variant="warning" title="Test number">
+          Your code is <strong className="text-base tracking-[0.2em] tabular-nums">{testCode}</strong>. Once SMS is switched on, real
+          students get it by SMS instead.
+        </Alert>
+      )}
       <div className="space-y-2">
         <Label htmlFor="code">6-digit code</Label>
         <Input

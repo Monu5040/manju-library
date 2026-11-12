@@ -209,6 +209,9 @@ SMS_BACKEND = env("SMS_BACKEND", default="core.sms.ConsoleSMSBackend")
 SMS_SENDER_ID = env("SMS_SENDER_ID", default="MANJUL")
 # Staging only: allow the console backend (codes appear in server logs) until a provider is set up.
 SMS_CONSOLE_ALLOWED = env.bool("SMS_CONSOLE_ALLOWED", default=False)
+# Testing without SMS: for these mobile numbers the login code is shown on the sign-in screen
+# (it is still sent as usual). Never in production: the deploy check refuses it (core.E008).
+LOGIN_CODE_ON_SCREEN = env.list("LOGIN_CODE_ON_SCREEN", default=[])
 
 # MSG91 (SMS_BACKEND=core.sms.Msg91SMSBackend). The template must be DLT-approved.
 MSG91_AUTH_KEY = env("MSG91_AUTH_KEY", default="")

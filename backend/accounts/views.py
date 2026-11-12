@@ -35,7 +35,7 @@ from audit.mixins import AuditedViewSetMixin
 from core.sms import SMSError, send_login_code
 
 from . import otp
-from .models import ADMIN_ROLES, Role, User
+from .models import ADMIN_ROLES, Role, User, normalize_mobile
 from .permissions import IsAdminOrStaff, IsSuperAdmin
 from .serializers import (
     AdminLoginSerializer,
@@ -135,13 +135,37 @@ class OtpRequestView(APIView):
                     },
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
-            audit.record(request, "auth.otp_sent", actor=user, entity="user", entity_id=user.pk)
+            on_screen = code_shown_on_screen(mobile)
+            audit.record(
+                request,
+                "auth.otp_sent",
+                actor=user,
+                entity="user",
+                entity_id=user.pk,
+                metadata={"shown_on_screen": True} if on_screen else None,
+            )
+            if on_screen:
+                return Response(
+                    {
+                        "detail": "Test number: the code is shown here instead of by SMS.",
+                        "test_code": code,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
 
         # Same answer whether or not the number is registered, so numbers cannot be probed.
         return Response(
             {"detail": "If this number is registered, a login code has been sent."},
             status=status.HTTP_202_ACCEPTED,
         )
+
+
+def code_shown_on_screen(mobile: str) -> bool:
+    """Testing without SMS: listed numbers see their code on screen, never in production."""
+    if settings.ENVIRONMENT == "production":
+        return False
+    listed = {normalize_mobile(m) for m in settings.LOGIN_CODE_ON_SCREEN}
+    return mobile in listed
 
 
 @method_decorator(csrf_protect, name="dispatch")

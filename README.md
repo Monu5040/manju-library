@@ -110,8 +110,11 @@ changing it.
    `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` (and `MSG91_CODE_VARIABLE` if the template's
    variable is not `otp`). Optional reminder templates: `MSG91_TEMPLATE_<KIND>`, see
    `deploy/.env.example`.
-2. **Production mode.** Delete `SMS_CONSOLE_ALLOWED`, set `ENVIRONMENT=production`. The
-   deploy stops with a clear message if anything production needs is missing.
+   Until then, to let a few people test, list their numbers in `LOGIN_CODE_ON_SCREEN`
+   (staging only): their login code is shown on the sign-in screen.
+2. **Production mode.** Delete `SMS_CONSOLE_ALLOWED` and `LOGIN_CODE_ON_SCREEN`, set
+   `ENVIRONMENT=production`. The deploy stops with a clear message if anything production
+   needs is missing.
 3. **Backups.** Give the backup its own settings file (only `DATABASE_URL`, `BACKUP_*` and the
    `S3_*`/`AWS_*` keys, not shared with the web app) and an S3 key that can upload but not
    delete, with old backups removed by a lifecycle rule on the bucket. Encrypt dumps before

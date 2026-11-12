@@ -81,6 +81,15 @@ def deployment_settings_check(app_configs, **kwargs):
             )
         )
 
+    if settings.ENVIRONMENT == "production" and settings.LOGIN_CODE_ON_SCREEN:
+        errors.append(
+            Error(
+                "LOGIN_CODE_ON_SCREEN would show login codes on screen in production.",
+                hint="It is for testing on staging only. Remove it from deploy/.env.",
+                id="core.E008",
+            )
+        )
+
     if settings.DEBUG:
         errors.append(Error("DEBUG must be off in staging and production.", id="core.E004"))
 

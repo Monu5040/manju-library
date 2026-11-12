@@ -100,3 +100,36 @@ def test_codes_per_number_are_rate_limited(api, student):
     for _ in range(5):
         assert api.post(REQUEST, {"mobile": student.mobile}).status_code == 202
     assert api.post(REQUEST, {"mobile": student.mobile}).status_code == 429
+
+
+def test_test_numbers_see_their_code_on_screen(api, student, settings):
+    settings.LOGIN_CODE_ON_SCREEN = ["98765 43210"]
+    response = api.post(REQUEST, {"mobile": "9876543210"})
+    assert response.status_code == 202
+    code = response.json()["test_code"]
+    assert code == last_sms_code()  # still sent as usual
+    assert api.post(VERIFY, {"mobile": "9876543210", "code": code}).status_code == 200
+    assert AuditLog.objects.get(action="auth.otp_sent").metadata == {"shown_on_screen": True}
+
+
+def test_codes_never_show_for_other_numbers_unregistered_ones_or_in_production(
+    api, student, settings
+):
+    settings.LOGIN_CODE_ON_SCREEN = ["9000000001", "9999999999"]
+    assert "test_code" not in api.post(REQUEST, {"mobile": "9876543210"}).json()
+    # A listed number that is not a student gets the usual answer (nothing to show).
+    assert "test_code" not in api.post(REQUEST, {"mobile": "9999999999"}).json()
+    settings.LOGIN_CODE_ON_SCREEN = ["9876543210"]
+    settings.ENVIRONMENT = "production"
+    assert "test_code" not in api.post(REQUEST, {"mobile": "9876543210"}).json()
+
+
+def test_deploy_check_refuses_on_screen_codes_in_production(settings):
+    from django.core import checks
+
+    settings.IS_DEPLOYED = True
+    settings.ENVIRONMENT = "production"
+    settings.LOGIN_CODE_ON_SCREEN = ["9876543210"]
+    assert "core.E008" in {e.id for e in checks.run_checks()}
+    settings.ENVIRONMENT = "staging"
+    assert "core.E008" not in {e.id for e in checks.run_checks()}
