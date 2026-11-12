@@ -47,6 +47,10 @@ class Branch(models.Model):
         default=True,
         help_text="Let one seat go to different students in shifts that do not overlap.",
     )
+    allow_online_payments = models.BooleanField(
+        default=False,
+        help_text="Let students renew and pay dues online through Razorpay.",
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

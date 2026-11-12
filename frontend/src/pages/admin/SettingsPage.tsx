@@ -77,6 +77,27 @@ function BranchCard({ canEdit }: { canEdit: boolean }) {
               <span className="block text-muted-foreground">A seat can go to different students in shifts that do not overlap, such as morning and evening.</span>
             </span>
           </label>
+          <label className="flex items-start gap-3 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4"
+              disabled={!canEdit || !value.online_payments_ready}
+              checked={value.allow_online_payments && value.online_payments_ready}
+              onChange={(e) => setDraft({ ...draft, allow_online_payments: e.target.checked })}
+            />
+            <span>
+              <span className="flex flex-wrap items-center gap-2 font-medium">
+                Students can pay online (Razorpay)
+                {value.online_payments_test_mode && <Badge tone="warning">Test mode: no real money</Badge>}
+              </span>
+              <span className="block text-muted-foreground">
+                {value.online_payments_ready
+                  ? 'Students renew and clear their dues from their portal by UPI, card or net banking. Receipts are made automatically.'
+                  : 'Not set up on the server yet: it needs the Razorpay keys and webhook (see the README, "Online payments").'}
+                {value.online_payments_test_mode && ' In test mode, only the test numbers set on the server can pay.'}
+              </span>
+            </span>
+          </label>
           {canEdit && (
             <div className="sm:col-span-2">
               <Button type="submit" disabled={!draft || save.isPending}>

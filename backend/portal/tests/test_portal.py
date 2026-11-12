@@ -88,7 +88,8 @@ def test_detail_hides_staff_only_information(family):
     payments = detail["payments"]
     assert {p["amount"] for p in payments} == {300, 50}
     assert all(
-        set(p) == {"id", "receipt_no", "paid_on", "amount", "mode_label", "reference", "is_void"}
+        set(p)
+        == {"id", "receipt_no", "paid_on", "amount", "mode_label", "source", "reference", "is_void"}
         for p in payments
     )
     assert "Staff only" not in str(detail) and "Typed twice" not in str(detail)

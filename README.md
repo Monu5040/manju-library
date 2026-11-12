@@ -126,6 +126,7 @@ changing it.
    before the HTTPS certificate expires.
 6. **Your own domain (optional).** Point its DNS at the server, set `SERVER_NAME`, and run
    `deploy/scripts/init-letsencrypt.sh` once.
+7. **Online payments (optional).** See [Online payments](#online-payments-razorpay).
 
 Then open **System status**: every service should say Working and every job On time.
 
@@ -135,6 +136,49 @@ sends realistic traffic to a running server (both refuse to run on staging or pr
 With 3 Gunicorn workers, as in production, 30 students and 3 admins at once got answers in
 4–80 ms (typical), and 100 students and 5 admins at once — far beyond a library's
 busiest hour — 349 requests a second with no errors.
+
+## Online payments (Razorpay)
+
+Students can renew their membership (same seat and timing) and clear dues from their portal
+by UPI, card or net banking. They pay on Razorpay's own page, so no card or UPI details touch
+this server and no Razorpay script runs on the site. A payment is recorded, with a normal
+receipt, only after Razorpay confirms it: by a signed webhook, by the app asking Razorpay when
+the student comes back, and by a job every 10 minutes in case a webhook is lost. If something
+changed while the student was paying (the seat was given away, the membership was cancelled,
+the desk had already renewed, or more was paid than was due), the money is still recorded and
+**Payments → Online payments** says what to sort out; the overview's "To do today" shows it
+too. A payment that does not match what was asked for (a different amount) is never recorded
+on its own; it waits there as "Paid, needs checking". If a student's payment never came back to
+the site, the app finds it before letting them pay again.
+
+**Try it in test mode first** (no KYC, no real money):
+
+1. Sign up at razorpay.com. In the dashboard, switch to **Test Mode**, then **Account &
+   Settings → API Keys → Generate Test Key**.
+2. Make up a long random webhook secret (for example `openssl rand -hex 32`).
+3. **Account & Settings → Webhooks → Add New Webhook**: URL
+   `https://<your-domain>/api/payments/razorpay/webhook/`, that secret, and the events
+   `payment_link.paid`, `payment_link.expired` and `payment_link.cancelled`.
+4. On the server, add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`
+   to `deploy/.env`, plus `RAZORPAY_TEST_MOBILES` with the mobile number of a test student
+   you admit for the purpose (your own number). With test keys only those numbers can pay
+   online, so real students never get a receipt or a renewal for test money. Then run
+   `deploy/scripts/deploy.sh`.
+5. In the app: **Settings → Library → Students can pay online**. Sign in as the test student
+   and pay with the test UPI ID `success@razorpay` (or `failure@razorpay` to see a failed
+   payment). Afterwards, void the test receipt and cancel the test renewal.
+
+**Going live:** finish Razorpay's KYC (a business or individual account with a bank account),
+generate the **live** keys in Live Mode, add the same webhook again in Live Mode (webhooks are
+set up separately for each mode), and replace the three values in `deploy/.env`. Set your
+business name and logo in Razorpay: students see them on the payment page. With
+`ENVIRONMENT=production` the deploy refuses test keys.
+
+Good to know: Razorpay keeps its fee (about 2%; UPI is often free) when it pays the money into
+your bank, usually two working days later, so receipts show what the student paid, not what
+reached the bank. Refunds are made in the Razorpay dashboard; then the owner voids the payment
+in the app with the reason. Students' names and mobile numbers go to Razorpay to fill in its
+payment page.
 
 ## What's built
 
@@ -213,5 +257,6 @@ changes settings, imports or sees full Aadhaar numbers. Every change is in the a
 - **Turn on MSG91**: a DLT-registered sender ID and OTP template, then the MSG91 settings
   in `deploy/.env`. Until then the server runs as staging and login codes go to the server log.
 - **Backups** to object storage (deliberately left for later).
-- Next phase: hardening and launch (Phase 5); online renewal (Razorpay) and the public
-  enquiry form (with lead analytics) when wanted.
+- **Razorpay keys**: online payments are built but stay off until the Razorpay keys and
+  webhook are set up (see [Online payments](#online-payments-razorpay)).
+- The public enquiry form (with lead analytics), when wanted.

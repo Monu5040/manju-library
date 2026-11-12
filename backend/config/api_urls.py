@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from accounts import views as accounts_views
 from analytics import views as analytics_views
 from automation import views as automation_views
-from billing.views import PaymentViewSet
+from billing.views import OnlinePaymentViewSet, PaymentViewSet, RazorpayWebhookView
 from core import views as core_views
 from imports.views import ImportViewSet
 from ledger import views as ledger_views
@@ -21,6 +21,7 @@ admin_router.register("plans", PlanViewSet, basename="plan")
 admin_router.register("students", members_views.StudentViewSet, basename="student")
 admin_router.register("memberships", members_views.MembershipViewSet, basename="membership")
 admin_router.register("waitlist", members_views.WaitlistViewSet, basename="waitlist")
+admin_router.register("payments/online", OnlinePaymentViewSet, basename="online-payment")
 admin_router.register("payments", PaymentViewSet, basename="payment")
 admin_router.register("staff", accounts_views.StaffViewSet, basename="staff")
 admin_router.register("imports", ImportViewSet, basename="import")
@@ -81,4 +82,21 @@ urlpatterns = [
     path(
         "portal/receipts/<int:pk>/", portal_views.PortalReceiptView.as_view(), name="portal-receipt"
     ),
+    path(
+        "portal/students/<int:pk>/online/",
+        portal_views.PortalOnlineView.as_view(),
+        name="portal-online",
+    ),
+    path(
+        "portal/online/confirm/",
+        portal_views.PortalOnlineConfirmView.as_view(),
+        name="portal-online-confirm",
+    ),
+    path(
+        "portal/online/<int:pk>/",
+        portal_views.PortalOnlineStatusView.as_view(),
+        name="portal-online-status",
+    ),
+    # Razorpay's server calls this; it is checked by signature, not by login.
+    path("payments/razorpay/webhook/", RazorpayWebhookView.as_view(), name="razorpay-webhook"),
 ]

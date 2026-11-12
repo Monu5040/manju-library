@@ -17,7 +17,7 @@ from accounts.permissions import AdminArea, CanExport
 from audit import services as audit
 from audit.mixins import AuditedViewSetMixin, snapshot
 from automation.models import Reminder
-from billing.models import Payment
+from billing.models import OnlinePayment, Payment
 from billing.serializers import PaymentSerializer
 from billing.services import record_payment
 from core.exports import Column, file_response
@@ -528,6 +528,9 @@ class DashboardView(APIView):
                         branch=branch,
                         status__in=[Reminder.Status.PENDING, Reminder.Status.FAILED],
                     ).count(),
+                    "online_to_check": OnlinePayment.objects.filter(branch=branch)
+                    .exclude(problem="")
+                    .count(),
                 },
             }
         )

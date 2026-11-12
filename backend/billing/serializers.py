@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from members.models import Membership, Student
 
-from .models import Payment
+from .models import OnlinePayment, Payment
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -14,6 +14,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         source="collected_by.full_name", read_only=True, default=None
     )
     mode_label = serializers.CharField(source="get_mode_display", read_only=True)
+    source_label = serializers.CharField(source="get_source_display", read_only=True)
 
     class Meta:
         model = Payment
@@ -27,6 +28,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             "amount",
             "mode",
             "mode_label",
+            "source",
+            "source_label",
             "paid_on",
             "reference",
             "notes",
@@ -68,3 +71,42 @@ class PaymentCreateSerializer(serializers.Serializer):
 
 class VoidSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=200)
+
+
+class OnlinePaymentSerializer(serializers.ModelSerializer):
+    """For the desk: every online payment attempt and what became of it."""
+
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+    roll_no = serializers.IntegerField(source="student.roll_no", read_only=True)
+    purpose_label = serializers.CharField(source="get_purpose_display", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+    plan_name = serializers.CharField(source="plan.name", read_only=True, default=None)
+    receipt_no = serializers.IntegerField(source="payment.receipt_no", read_only=True, default=None)
+
+    class Meta:
+        model = OnlinePayment
+        fields = [
+            "id",
+            "student",
+            "student_name",
+            "roll_no",
+            "purpose",
+            "purpose_label",
+            "membership",
+            "amount",
+            "status",
+            "status_label",
+            "plan_name",
+            "renewal_start",
+            "renewal_end",
+            "gateway_payment_id",
+            "method",
+            "payment",
+            "receipt_no",
+            "renewal",
+            "problem",
+            "created_at",
+            "expires_at",
+            "paid_at",
+        ]
+        read_only_fields = fields

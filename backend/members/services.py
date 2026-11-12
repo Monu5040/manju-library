@@ -201,6 +201,8 @@ def renewal_start(previous: Membership, today: date | None = None) -> date:
 
 @transaction.atomic
 def renew_membership(previous: Membership, *, by=None, **overrides) -> Membership:
+    # One renewal at a time from the same membership (the desk and an online payment).
+    list(Membership.objects.select_for_update().filter(pk=previous.pk).values_list("pk"))
     plan = overrides.get("plan", previous.plan)
     start = overrides.get("start_date") or renewal_start(previous)
     months = plan.duration_months if plan else 1

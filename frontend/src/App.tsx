@@ -15,6 +15,7 @@ const AdminHomePage = lazy(() => import('@/pages/AdminHomePage'))
 const AccountPage = lazy(() => import('@/pages/admin/AccountPage'))
 const AdmissionPage = lazy(() => import('@/pages/admin/AdmissionPage'))
 const PaymentsPage = lazy(() => import('@/pages/admin/PaymentsPage'))
+const OnlinePaymentsPage = lazy(() => import('@/pages/admin/OnlinePaymentsPage'))
 const ReceiptPage = lazy(() => import('@/pages/admin/ReceiptPage'))
 const RenewalsPage = lazy(() => import('@/pages/admin/RenewalsPage'))
 const SeatMapPage = lazy(() => import('@/pages/admin/SeatMapPage'))
@@ -37,6 +38,7 @@ const PortalPaymentsPage = lazy(() => import('@/pages/portal/PortalPaymentsPage'
 const PortalReceiptPage = lazy(() => import('@/pages/portal/PortalReceiptPage'))
 const PortalProfilePage = lazy(() => import('@/pages/portal/PortalProfilePage'))
 const PortalFeesPage = lazy(() => import('@/pages/portal/PortalFeesPage'))
+const PortalPayReturnPage = lazy(() => import('@/pages/portal/PortalPayReturnPage'))
 
 export default function App() {
   return (
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="receipts/:id" element={<PortalReceiptPage />} />
         <Route path="profile" element={<PortalProfilePage />} />
         <Route path="fees" element={<PortalFeesPage />} />
+        <Route path="pay/return" element={<PortalPayReturnPage />} />
       </Route>
 
       <Route
@@ -81,6 +84,7 @@ export default function App() {
         <Route path="renewals" element={<RenewalsPage />} />
         <Route path="reminders" element={<RemindersPage />} />
         <Route path="payments" element={<PaymentsPage />} />
+        <Route path="payments/online" element={<OnlinePaymentsPage />} />
         <Route path="payments/:id/receipt" element={<ReceiptPage />} />
         <Route path="waitlist" element={<WaitlistPage />} />
         <Route path="notices" element={<NoticesPage />} />

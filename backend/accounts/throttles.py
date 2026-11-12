@@ -51,3 +51,14 @@ class AdminLoginIdentifierThrottle(SimpleRateThrottle):
             # "+91 98765 43210", "9876543210a" and "9876543210" are the same account.
             identifier = normalize_mobile(identifier) or identifier
         return self.cache_format % {"scope": self.scope, "ident": identifier}
+
+
+class OnlinePaymentThrottle(SimpleRateThrottle):
+    """Each online payment start asks Razorpay for a link: a few per hour per login."""
+
+    scope = "online_payment"
+
+    def get_cache_key(self, request, view):
+        if request.method != "POST" or not request.user.is_authenticated:
+            return None
+        return self.cache_format % {"scope": self.scope, "ident": request.user.pk}

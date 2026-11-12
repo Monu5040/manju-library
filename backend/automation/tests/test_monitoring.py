@@ -46,6 +46,7 @@ def test_job_states():
         "mark-students-left": "waiting",
         "import-cleanup": "failed",
         "session-cleanup": "waiting",
+        "online-payments": "waiting",
     }
 
 
@@ -64,6 +65,7 @@ def test_the_status_page_is_for_the_super_admin(owner_api, staff_api):
         "backups": False,
         "errors": False,
         "uptime": None,
+        "payments": None,  # optional: judged once Razorpay keys are set
     }
     assert {row["name"] for row in status["jobs"]} == set(monitoring.JOBS)
 

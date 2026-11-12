@@ -47,6 +47,7 @@ export default function ReceiptPage() {
           <dt className="text-muted-foreground">Paid by</dt>
           <dd className="text-right">
             {p.mode_label}
+            {p.source === 'ONLINE' && ' (online, through Razorpay)'}
             {p.reference && ` · ${p.reference}`}
           </dd>
         </dl>
@@ -60,7 +61,7 @@ export default function ReceiptPage() {
           </p>
         )}
         <footer className="mt-8 text-center text-xs text-muted-foreground">
-          Received by {p.collected_by_name ?? 'the library'} · computer-generated receipt
+          Received by {p.collected_by_name ?? (p.source === 'ONLINE' ? 'Razorpay for the library' : 'the library')} · computer-generated receipt
         </footer>
       </article>
     </div>

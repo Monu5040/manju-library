@@ -15,6 +15,8 @@ from django.core.cache import cache
 from django.db import connection
 from django.utils import timezone
 
+from billing import razorpay
+
 from .models import JobRun
 
 KEEP_RUNS = 200
@@ -46,6 +48,11 @@ JOBS = {
         "label": "Clear expired sessions",
         "schedule": "Every night, 2:50 AM",
         "max_gap": timedelta(hours=26),
+    },
+    "online-payments": {
+        "label": "Check online payments with Razorpay",
+        "schedule": "Every 10 minutes",
+        "max_gap": timedelta(minutes=40),
     },
 }
 
@@ -174,6 +181,12 @@ def launch_checklist() -> list[dict]:
             "key": "uptime",
             "label": "An uptime monitor checks /api/health/ every few minutes",
             "done": None,  # outside the app: confirm it yourself
+        },
+        {
+            "key": "payments",
+            "label": "Online payments use live Razorpay keys, and the webhook is set up",
+            # Optional: only judged once Razorpay keys are on the server.
+            "done": (not razorpay.test_mode()) if razorpay.configured() else None,
         },
     ]
 

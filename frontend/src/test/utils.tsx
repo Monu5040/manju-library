@@ -112,6 +112,7 @@ export const portalProfile = {
   admission_date: '2026-11-01',
   status: 'ACTIVE' as const,
   branch_name: 'Manju Library',
+  renewed_until: null,
   current_membership: {
     id: 5,
     seat_number: '12',

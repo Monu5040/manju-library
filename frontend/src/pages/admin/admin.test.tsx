@@ -48,7 +48,7 @@ const membership: Membership = {
 }
 
 const payment: Payment = {
-  id: 11, receipt_no: 1107, student: 1, student_name: 'Asha Kumari', roll_no: 1, membership: 5, amount: 200, mode: 'UPI', mode_label: 'UPI',
+  id: 11, receipt_no: 1107, student: 1, student_name: 'Asha Kumari', roll_no: 1, membership: 5, amount: 200, mode: 'UPI', mode_label: 'UPI', source: 'DESK', source_label: 'Front desk',
   paid_on: '2026-11-11', reference: '', notes: '', collected_by_name: 'Front Desk', is_void: false, void_reason: '', voided_at: null, created_at: '2026-11-11T10:00:00Z',
 }
 

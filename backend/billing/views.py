@@ -1,9 +1,14 @@
 import django_filters
-from django.db.models import Count, Sum
+from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.permissions import AdminArea, CanExport
@@ -13,8 +18,14 @@ from core.exports import Column, file_response
 from library.branching import BranchScopedMixin
 from members.filters import search
 
-from .models import Payment
-from .serializers import PaymentCreateSerializer, PaymentSerializer, VoidSerializer
+from . import online, razorpay
+from .models import OnlinePayment, Payment
+from .serializers import (
+    OnlinePaymentSerializer,
+    PaymentCreateSerializer,
+    PaymentSerializer,
+    VoidSerializer,
+)
 from .services import record_payment, void_payment
 
 PAYMENT_EXPORT_COLUMNS = [
@@ -38,7 +49,7 @@ class PaymentFilter(django_filters.FilterSet):
 
     class Meta:
         model = Payment
-        fields = ["student", "membership", "mode", "is_void"]
+        fields = ["student", "membership", "mode", "source", "is_void"]
 
     def filter_q(self, queryset, name, value):
         value = value.strip()
@@ -110,7 +121,9 @@ class PaymentViewSet(
                 "amount": p.amount,
                 "mode": p.get_mode_display(),
                 "reference": p.reference,
-                "taken_by": p.collected_by.full_name if p.collected_by else "",
+                "taken_by": p.collected_by.full_name
+                if p.collected_by
+                else ("Online (Razorpay)" if p.source == Payment.Source.ONLINE else ""),
                 "void": "Yes" if p.is_void else "",
                 "void_reason": p.void_reason,
             }
@@ -152,3 +165,99 @@ class PaymentViewSet(
                 ],
             }
         )
+
+
+class OnlinePaymentFilter(django_filters.FilterSet):
+    needs_attention = django_filters.BooleanFilter(method="filter_attention")
+    closed = django_filters.BooleanFilter(method="filter_closed")
+
+    class Meta:
+        model = OnlinePayment
+        fields = ["status", "purpose", "student"]
+
+    def filter_attention(self, queryset, name, value):
+        return queryset.exclude(problem="") if value else queryset.filter(problem="")
+
+    def filter_closed(self, queryset, name, value):
+        """Links that closed without being paid (expired or replaced by a newer one)."""
+        closed = [OnlinePayment.Status.EXPIRED, OnlinePayment.Status.CANCELLED]
+        return queryset.filter(status__in=closed) if value else queryset.exclude(status__in=closed)
+
+
+class OnlinePaymentViewSet(
+    BranchScopedMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet
+):
+    """Online payment attempts. Staff can look and ask Razorpay; the owner clears notes."""
+
+    queryset = OnlinePayment.objects.select_related("student", "payment", "plan")
+    serializer_class = OnlinePaymentSerializer
+    permission_classes = [AdminArea]
+    staff_actions = {"check"}
+    filterset_class = OnlinePaymentFilter
+    ordering = ["-created_at"]
+
+    @action(detail=True, methods=["post"])
+    def check(self, request, pk=None):
+        """Ask Razorpay now, instead of waiting for the webhook or the next check."""
+        attempt = self.get_object()
+        try:
+            attempt = online.check(attempt)
+        except razorpay.RazorpayError as exc:
+            raise ValidationError({"detail": f"Razorpay could not be asked: {exc}"}) from exc
+        return Response(OnlinePaymentSerializer(attempt).data)
+
+    @action(detail=True, methods=["post"], url_path="sorted")
+    def mark_sorted(self, request, pk=None):
+        """Super Admin only: the note was dealt with (a refund made, a renewal fixed...)."""
+        attempt = self.get_object()
+        if not attempt.problem:
+            raise ValidationError({"detail": "There is nothing to sort out on this payment."})
+        audit.record(
+            request,
+            "online_payment.sorted",
+            entity="online_payment",
+            entity_id=attempt.pk,
+            before={"problem": attempt.problem},
+            metadata={"note": str(request.data.get("note", ""))[:200]},
+        )
+        attempt.problem = ""
+        attempt.save(update_fields=["problem"])
+        return Response(OnlinePaymentSerializer(attempt).data)
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        attempts = self.get_queryset()
+        return Response(
+            {
+                "configured": razorpay.configured(),
+                "test_mode": razorpay.test_mode(),
+                # On a deployed server, test mode is limited to RAZORPAY_TEST_MOBILES.
+                "test_mobiles_only": razorpay.test_mode() and settings.IS_DEPLOYED,
+                "enabled": self.get_branch().allow_online_payments,
+                "needs_attention": attempts.exclude(problem="").count(),
+                "paid_today": attempts.filter(
+                    status=OnlinePayment.Status.PAID, paid_at__date=timezone.localdate()
+                ).count(),
+                "waiting": attempts.filter(
+                    Q(status=OnlinePayment.Status.PENDING) & Q(expires_at__gt=timezone.now())
+                ).count(),
+            }
+        )
+
+
+class RazorpayWebhookView(APIView):
+    """
+    Razorpay's server tells us about payment links (paid, expired, cancelled). Every call is
+    checked against RAZORPAY_WEBHOOK_SECRET; recording is idempotent, so retries are safe.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        signature = request.headers.get("X-Razorpay-Signature", "")
+        try:
+            result = online.handle_webhook(request.body, signature)
+        except PermissionDenied:
+            return Response({"detail": "Bad signature."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"result": result})

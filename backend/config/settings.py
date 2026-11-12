@@ -177,6 +177,7 @@ REST_FRAMEWORK = {
         "admin_login_ip": env("THROTTLE_ADMIN_LOGIN_IP", default="20/hour"),
         "admin_login_identifier": env("THROTTLE_ADMIN_LOGIN_IDENTIFIER", default="10/hour"),
         "admin_totp_ip": env("THROTTLE_ADMIN_TOTP_IP", default="30/hour"),
+        "online_payment": env("THROTTLE_ONLINE_PAYMENT", default="20/hour"),
     },
     # Number of reverse proxies in front of Django (Nginx = 1). Used to read the client IP.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
@@ -223,6 +224,25 @@ MSG91_REMINDER_TEMPLATES = {
 }
 
 # ---------------------------------------------------------------------------
+# Online payments (Razorpay)
+# ---------------------------------------------------------------------------
+
+# Students pay on Razorpay's own page (a payment link), so no Razorpay script runs on this
+# site and the CSP stays strict. Razorpay confirms each payment with a signed webhook; a job
+# also asks Razorpay about open links in case a webhook is missed. Online payments stay off
+# until all three values are set and the owner turns them on in Settings.
+RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", default="")
+RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
+RAZORPAY_API_URL = env("RAZORPAY_API_URL", default="https://api.razorpay.com/v1/")
+# With test keys on a deployed server, only these mobile numbers can pay online, so test
+# money never gives a real student a receipt or a renewal. Production refuses test keys.
+RAZORPAY_TEST_MOBILES = env.list("RAZORPAY_TEST_MOBILES", default=[])
+# Where students come back to after paying. Deployed sites work it out from the request;
+# set this when the API is reached through another address (local development).
+SITE_URL = env("SITE_URL", default="")
+
+# ---------------------------------------------------------------------------
 # Celery
 # ---------------------------------------------------------------------------
 
@@ -252,6 +272,11 @@ CELERY_BEAT_SCHEDULE = {
     "clear-expired-sessions": {
         "task": "automation.tasks.clear_expired_sessions",
         "schedule": crontab(minute=50, hour=2),
+    },
+    # Catches online payments whose webhook never arrived.
+    "check-online-payments": {
+        "task": "billing.tasks.check_online_payments",
+        "schedule": timedelta(minutes=10),
     },
 }
 

@@ -6,7 +6,7 @@ payment, void reasons) are deliberately left out.
 from rest_framework import serializers
 
 from accounts.serializers import MobileField
-from billing.models import Payment
+from billing.models import OnlinePayment, Payment
 from library.models import Plan, Shift
 from members.models import Membership, Student
 from members.serializers import pick_current
@@ -55,13 +55,23 @@ class PortalPaymentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ["id", "receipt_no", "paid_on", "amount", "mode_label", "reference", "is_void"]
+        fields = [
+            "id",
+            "receipt_no",
+            "paid_on",
+            "amount",
+            "mode_label",
+            "source",
+            "reference",
+            "is_void",
+        ]
 
 
 class PortalStudentSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source="branch.name")
     aadhaar_masked = serializers.CharField()
     current_membership = serializers.SerializerMethodField()
+    renewed_until = serializers.SerializerMethodField()
     total_due = serializers.SerializerMethodField()
 
     class Meta:
@@ -79,12 +89,25 @@ class PortalStudentSerializer(serializers.ModelSerializer):
             "status",
             "branch_name",
             "current_membership",
+            "renewed_until",
             "total_due",
         ]
 
     def get_current_membership(self, obj):
         current = pick_current(list(obj.memberships.all()))
         return PortalMembershipSerializer(current).data if current else None
+
+    def get_renewed_until(self, obj):
+        """When the current membership was already renewed: the last day of its renewals."""
+        live = [m for m in obj.memberships.all() if m.status != Membership.Status.CANCELLED]
+        current = pick_current(live)
+        renewal_of = {m.renewed_from_id: m for m in live if m.renewed_from_id}
+        last, seen = None, set()
+        while current is not None and current.pk in renewal_of and current.pk not in seen:
+            seen.add(current.pk)
+            current = renewal_of[current.pk]
+            last = current.end_date
+        return last
 
     def get_total_due(self, obj) -> float:
         return float(
@@ -154,3 +177,9 @@ class PortalPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ["id", "name", "duration_months", "shift_name", "price"]
+
+
+class OnlinePaymentStartSerializer(serializers.Serializer):
+    purpose = serializers.ChoiceField(choices=OnlinePayment.Purpose.choices)
+    membership = serializers.IntegerField(min_value=1)
+    plan = serializers.IntegerField(min_value=1, required=False, allow_null=True)

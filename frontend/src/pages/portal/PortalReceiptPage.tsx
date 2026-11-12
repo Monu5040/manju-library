@@ -44,6 +44,7 @@ export default function PortalReceiptPage() {
           <dt className="text-muted-foreground">Paid by</dt>
           <dd className="text-right">
             {r.mode_label}
+            {r.source === 'ONLINE' && ' (online, through Razorpay)'}
             {r.reference && ` · ${r.reference}`}
           </dd>
         </dl>

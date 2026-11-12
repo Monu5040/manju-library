@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { Globe, Search } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ExportMenu } from '@/components/admin/ExportMenu'
@@ -44,7 +44,16 @@ export default function PaymentsPage() {
       <PageHeader
         title="Payments"
         description="Every payment with its receipt number. Void payments are struck through."
-        actions={<ExportMenu path="/admin/payments/export/" params={filters} />}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link to="/admin/payments/online">
+                <Globe aria-hidden="true" /> Online payments
+              </Link>
+            </Button>
+            <ExportMenu path="/admin/payments/export/" params={filters} />
+          </>
+        }
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
@@ -114,10 +123,13 @@ export default function PaymentsPage() {
                 </TD>
                 <TD className={p.is_void ? 'tabular-nums line-through' : 'tabular-nums'}>{formatMoney(p.amount)}</TD>
                 <TD>
-                  {p.mode_label}
+                  <span className="flex items-center gap-2">
+                    {p.mode_label}
+                    {p.source === 'ONLINE' && <Badge tone="info">online</Badge>}
+                  </span>
                   {p.reference && <div className="text-xs text-muted-foreground">{p.reference}</div>}
                 </TD>
-                <TD className="text-sm">{p.collected_by_name ?? '—'}</TD>
+                <TD className="text-sm">{p.collected_by_name ?? (p.source === 'ONLINE' ? 'Razorpay' : '—')}</TD>
                 <TD className="text-right">
                   <Button asChild size="sm" variant="ghost">
                     <Link to={`/admin/payments/${p.id}/receipt`}>Receipt</Link>

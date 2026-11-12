@@ -4,10 +4,35 @@ from .models import Branch, Plan, Seat, Shift
 
 
 class BranchSerializer(serializers.ModelSerializer):
+    # Whether the server has Razorpay keys; the switch does nothing without them.
+    online_payments_ready = serializers.SerializerMethodField()
+    online_payments_test_mode = serializers.SerializerMethodField()
+
     class Meta:
         model = Branch
-        fields = ["id", "name", "code", "address", "phone", "allow_seat_sharing", "is_active"]
+        fields = [
+            "id",
+            "name",
+            "code",
+            "address",
+            "phone",
+            "allow_seat_sharing",
+            "allow_online_payments",
+            "online_payments_ready",
+            "online_payments_test_mode",
+            "is_active",
+        ]
         read_only_fields = ["code"]
+
+    def get_online_payments_ready(self, obj) -> bool:
+        from billing import razorpay
+
+        return razorpay.configured()
+
+    def get_online_payments_test_mode(self, obj) -> bool:
+        from billing import razorpay
+
+        return razorpay.configured() and razorpay.test_mode()
 
 
 class ShiftSerializer(serializers.ModelSerializer):

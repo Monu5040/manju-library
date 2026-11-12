@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CalendarClock,
   ChevronRight,
+  Globe,
   HandCoins,
   ListOrdered,
   type LucideIcon,
@@ -175,6 +176,16 @@ function ToDo({ stats, className }: { stats: Overview['library'] | undefined; cl
     { to: '/admin/renewals', icon: CalendarClock, label: 'Renewals this week', detail: 'Memberships ending in 7 days', count: stats?.expiring_in_7_days },
     { to: '/admin/waitlist', icon: ListOrdered, label: 'Waiting list', detail: 'Students waiting for a seat', count: stats?.waiting },
   ]
+  if (stats?.online_to_check) {
+    // Only when something needs a person: a paid online renewal whose seat was taken, and so on.
+    items.unshift({
+      to: '/admin/payments/online?view=attention',
+      icon: Globe,
+      label: 'Online payments to check',
+      detail: 'Paid, but the desk needs to sort something out',
+      count: stats.online_to_check,
+    })
+  }
   return (
     <Panel title="To do today" className={className}>
       <ul className="px-2 pb-2">

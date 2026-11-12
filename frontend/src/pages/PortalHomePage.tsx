@@ -1,5 +1,7 @@
-import { ArrowRight, CalendarDays, CircleCheck, Clock, MapPin, Megaphone, Phone, Pin, Wallet } from 'lucide-react'
+import { ArrowRight, CalendarDays, CircleCheck, Clock, MapPin, Megaphone, Phone, Pin, RefreshCw, Wallet } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { PayDuesButton, RenewOnlineDialog } from '@/components/portal/OnlinePayment'
 import { ProfileSwitcher } from '@/components/portal/ProfileSwitcher'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -9,12 +11,14 @@ import { EmptyState } from '@/components/ui/page'
 import { Skeleton } from '@/components/ui/spinner'
 import { errorMessage } from '@/lib/api'
 import { daysLeftLabel, firstName, formatDate, formatDayMonth, formatLongDate, formatMoney, todayIso } from '@/lib/format'
-import { useSelectedProfile } from '@/lib/portal'
-import type { LibraryInfo, Notice, PortalMembership, PortalStudent } from '@/lib/types'
+import { usePortalOnline, useSelectedProfile } from '@/lib/portal'
+import type { LibraryInfo, Notice, PortalMembership, PortalOnline, PortalStudent } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export default function PortalHomePage() {
   const { home, profiles, selected, select } = useSelectedProfile()
+  const online = usePortalOnline(selected?.id)
+  const [renewing, setRenewing] = useState(false)
 
   if (home.isPending) return <HomeSkeleton />
   if (home.error) return <Alert variant="destructive">{errorMessage(home.error)}</Alert>
@@ -29,6 +33,10 @@ export default function PortalHomePage() {
   const m = selected.current_membership
   const library = home.data.library
   const query = `?profile=${selected.id}`
+  // Online payments (Razorpay), when the library has turned them on.
+  const pay = online.data?.available ? online.data : undefined
+  const renewal = pay?.renewal && pay.renewal.options.some((o) => !o.unavailable) ? pay.renewal : null
+  const openRenewal = renewal ? () => setRenewing(true) : undefined
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -46,15 +54,19 @@ export default function PortalHomePage() {
 
       {m && (m.state === 'EXPIRED' || (m.state === 'ACTIVE' && m.days_left <= 7)) && (
         <Alert variant={m.state === 'EXPIRED' ? 'destructive' : 'warning'}>
-          {m.state === 'EXPIRED'
-            ? `Your membership ended on ${formatDate(m.end_date)}. Renew at the front desk to keep your seat.`
-            : `Your membership ends on ${formatDate(m.end_date)}. Renew at the front desk to keep your seat.`}
+          {m.state === 'EXPIRED' ? `Your membership ended on ${formatDate(m.end_date)}.` : `Your membership ends on ${formatDate(m.end_date)}.`}{' '}
+          {openRenewal ? 'Renew online now, or at the front desk, to keep your seat.' : 'Renew at the front desk to keep your seat.'}
+          {openRenewal && (
+            <Button size="sm" className="mt-2 flex" onClick={openRenewal}>
+              <RefreshCw aria-hidden="true" /> Renew online
+            </Button>
+          )}
         </Alert>
       )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         {m ? (
-          <MembershipPass membership={m} student={selected} />
+          <MembershipPass membership={m} student={selected} onRenew={openRenewal} />
         ) : (
           <Card className="flex flex-col justify-center p-6 sm:p-8">
             <h2 className="font-display text-2xl font-semibold">No current membership</h2>
@@ -69,18 +81,30 @@ export default function PortalHomePage() {
           </Card>
         )}
         <div className="grid content-start gap-5">
-          <DuesCard student={selected} membership={m} query={query} />
+          <DuesCard student={selected} membership={m} query={query} online={pay} />
           {library && (library.address || library.phone) && <LibraryCard library={library} query={query} />}
         </div>
       </div>
 
       <Notices notices={home.data.notices} />
+
+      {renewing && renewal && pay && (
+        <RenewOnlineDialog studentId={selected.id} renewal={renewal} testMode={pay.test_mode} onClose={() => setRenewing(false)} />
+      )}
     </div>
   )
 }
 
 /** The membership as a library pass: seat and timing large, with a ring for the days left. */
-function MembershipPass({ membership: m, student }: { membership: PortalMembership; student: PortalStudent }) {
+function MembershipPass({
+  membership: m,
+  student,
+  onRenew,
+}: {
+  membership: PortalMembership
+  student: PortalStudent
+  onRenew?: () => void
+}) {
   const total = Math.max(1, (Date.parse(m.end_date) - Date.parse(m.start_date)) / 86_400_000 + 1)
   const left = Math.max(0, Math.min(total, m.days_left + 1))
   const percent = m.state === 'UPCOMING' ? 100 : m.state === 'ACTIVE' ? Math.round((left / total) * 100) : 0
@@ -136,6 +160,20 @@ function MembershipPass({ membership: m, student }: { membership: PortalMembersh
           {formatDate(m.start_date)} – {formatDate(m.end_date)}
         </span>
       </div>
+      {student.renewed_until ? (
+        <p className="mx-6 mb-6 flex items-center gap-2 rounded-xl bg-sidebar-hover px-4 py-2.5 text-sm sm:mx-7">
+          <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-accent" />
+          Renewed: your seat is yours until {formatDate(student.renewed_until)}.
+        </p>
+      ) : (
+        onRenew && (
+          <div className="px-6 pb-6 sm:px-7">
+            <Button variant="accent" className="w-full" onClick={onRenew}>
+              <RefreshCw aria-hidden="true" /> Renew online
+            </Button>
+          </div>
+        )
+      )}
     </section>
   )
 }
@@ -206,8 +244,19 @@ function DaysLeftRing({ membership: m, percent, soon }: { membership: PortalMemb
   )
 }
 
-function DuesCard({ student, membership: m, query }: { student: PortalStudent; membership: PortalMembership | null; query: string }) {
+function DuesCard({
+  student,
+  membership: m,
+  query,
+  online,
+}: {
+  student: PortalStudent
+  membership: PortalMembership | null
+  query: string
+  online?: PortalOnline
+}) {
   const owes = student.total_due > 0
+  const dues = online?.dues ?? []
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex items-start gap-4">
@@ -225,7 +274,9 @@ function DuesCard({ student, membership: m, query }: { student: PortalStudent; m
             <>
               <p className="mt-0.5 text-2xl font-semibold tracking-tight">{formatMoney(student.total_due)} is due</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Pay at the front desk (cash or UPI) and the receipt appears here.
+                {dues.length > 0
+                  ? 'Pay online now, or at the front desk. The receipt appears here.'
+                  : 'Pay at the front desk (cash or UPI) and the receipt appears here.'}
               </p>
             </>
           ) : (
@@ -251,6 +302,19 @@ function DuesCard({ student, membership: m, query }: { student: PortalStudent; m
             <dd className={cn('font-semibold tabular-nums', m.due_total > 0 && 'text-destructive')}>{formatMoney(m.due_total)}</dd>
           </div>
         </dl>
+      )}
+      {online && dues.length > 0 && (
+        <div className="mt-5 space-y-3">
+          {dues.map((due) => (
+            <PayDuesButton
+              key={due.membership}
+              studentId={student.id}
+              due={due}
+              testMode={online.test_mode}
+              label={dues.length > 1 ? `Pay ${formatMoney(due.amount)} for ${formatDate(due.start_date)} – ${formatDate(due.end_date)}` : undefined}
+            />
+          ))}
+        </div>
       )}
       <Link
         to={`/portal/payments${query}`}

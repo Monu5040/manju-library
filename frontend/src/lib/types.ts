@@ -14,6 +14,10 @@ export interface Branch {
   address: string
   phone: string
   allow_seat_sharing: boolean
+  allow_online_payments: boolean
+  /** The server has Razorpay keys; the switch does nothing without them. */
+  online_payments_ready: boolean
+  online_payments_test_mode: boolean
   is_active: boolean
 }
 
@@ -119,6 +123,8 @@ export interface Payment {
   amount: number
   mode: PaymentMode
   mode_label: string
+  source: PaymentSource
+  source_label: string
   paid_on: string
   reference: string
   notes: string
@@ -127,6 +133,47 @@ export interface Payment {
   void_reason: string
   voided_at: string | null
   created_at: string
+}
+
+export type PaymentSource = 'DESK' | 'ONLINE'
+
+export type OnlineStatus = 'PENDING' | 'PAID' | 'FLAGGED' | 'EXPIRED' | 'CANCELLED'
+
+/** An online payment attempt, as the desk sees it. */
+export interface OnlinePayment {
+  id: number
+  student: number
+  student_name: string
+  roll_no: number
+  purpose: 'DUES' | 'RENEWAL'
+  purpose_label: string
+  membership: number
+  amount: number
+  status: OnlineStatus
+  status_label: string
+  plan_name: string | null
+  renewal_start: string | null
+  renewal_end: string | null
+  gateway_payment_id: string | null
+  method: string
+  payment: number | null
+  receipt_no: number | null
+  renewal: number | null
+  problem: string
+  created_at: string
+  expires_at: string | null
+  paid_at: string | null
+}
+
+export interface OnlineSummary {
+  configured: boolean
+  test_mode: boolean
+  /** Test keys on a deployed server: only RAZORPAY_TEST_MOBILES can pay. */
+  test_mobiles_only: boolean
+  enabled: boolean
+  needs_attention: number
+  paid_today: number
+  waiting: number
 }
 
 export interface PaymentSummary {
@@ -148,6 +195,7 @@ export interface Overview {
     collected_this_month: number
     waiting: number
     reminders_to_send: number
+    online_to_check?: number
   }
 }
 
@@ -287,6 +335,8 @@ export interface PortalStudent {
   status: 'ACTIVE' | 'LEFT'
   branch_name: string
   current_membership: PortalMembership | null
+  /** Already renewed: the renewal's last day. */
+  renewed_until: string | null
   total_due: number
 }
 
@@ -296,8 +346,49 @@ export interface PortalPayment {
   paid_on: string
   amount: number
   mode_label: string
+  source: PaymentSource
   reference: string
   is_void: boolean
+}
+
+export interface RenewalOption {
+  plan: number
+  plan_name: string
+  months: number
+  start_date: string
+  end_date: string
+  price: number
+  discount: number
+  amount: number
+  /** Why this cannot be paid online (empty when it can). */
+  unavailable: string
+}
+
+/** What a student can pay online right now. */
+export interface PortalOnline {
+  available: boolean
+  test_mode: boolean
+  dues: { membership: number; amount: number; start_date: string; end_date: string }[]
+  renewal: {
+    membership: number
+    seat_number: string | null
+    shift_name: string | null
+    time_label: string
+    end_date: string
+    options: RenewalOption[]
+  } | null
+}
+
+/** One online payment, as its student sees it. */
+export interface PortalOnlineStatus {
+  id: number
+  status: OnlineStatus
+  purpose: 'DUES' | 'RENEWAL'
+  amount: number
+  receipt: number | null
+  receipt_no: number | null
+  renewal_end: string | null
+  needs_desk: boolean
 }
 
 export interface Notice {

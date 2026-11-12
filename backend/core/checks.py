@@ -56,6 +56,31 @@ def deployment_settings_check(app_configs, **kwargs):
             )
         )
 
+    razorpay_values = [
+        settings.RAZORPAY_KEY_ID,
+        settings.RAZORPAY_KEY_SECRET,
+        settings.RAZORPAY_WEBHOOK_SECRET,
+    ]
+    if any(razorpay_values) and not all(razorpay_values):
+        errors.append(
+            Error(
+                "Razorpay is only partly set up.",
+                hint=(
+                    "Set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET "
+                    "together, or none of them."
+                ),
+                id="core.E006",
+            )
+        )
+    if settings.ENVIRONMENT == "production" and settings.RAZORPAY_KEY_ID.startswith("rzp_test_"):
+        errors.append(
+            Error(
+                "Production uses Razorpay test keys: students would 'pay' without real money.",
+                hint="Use the live keys (rzp_live_...) from the Razorpay dashboard.",
+                id="core.E007",
+            )
+        )
+
     if settings.DEBUG:
         errors.append(Error("DEBUG must be off in staging and production.", id="core.E004"))
 

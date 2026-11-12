@@ -96,3 +96,10 @@ export function greeting(now: Date = new Date()): string {
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? ''
 }
+
+const dayTime = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+
+/** "12 Nov, 2:35 pm" from a timestamp. */
+export function formatDateTime(iso: string | null | undefined): string {
+  return iso ? dayTime.format(new Date(iso)) : '—'
+}
