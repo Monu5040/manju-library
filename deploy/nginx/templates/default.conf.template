@@ -1,7 +1,13 @@
 # Rendered at container start; ${SERVER_NAME} comes from the environment.
 
+# Docker's own DNS, asked again every 10 seconds: when the backend container is replaced
+# (a settings change, a crash), nginx finds its new address instead of holding on to the
+# old one and answering 502 until nginx itself restarts.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
 upstream django {
-    server backend:8000;
+    zone django 64k;
+    server backend:8000 resolve;
     keepalive 16;
 }
 

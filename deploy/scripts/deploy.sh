@@ -14,13 +14,21 @@ KEEP_RELEASES=3
 
 healthy() {
     attempts=0
-    until docker compose exec -T backend python healthcheck.py >/dev/null 2>&1; do
+    until docker compose exec -T backend python healthcheck.py >/dev/null 2>&1 && through_nginx; do
         attempts=$((attempts + 1))
         if [ "$attempts" -ge 45 ]; then
             return 1
         fi
         sleep 2
     done
+}
+
+# The path visitors take: HTTPS to nginx, then Django. A backend that is fine on its own
+# is not enough; nginx must reach it too.
+through_nginx() {
+    server=$(sed -n 's/^SERVER_NAME=//p' .env | tail -n 1)
+    curl -fsk --max-time 5 --resolve "${server}:443:127.0.0.1" \
+        "https://${server}/api/health/" >/dev/null 2>&1
 }
 
 roll_back() {
@@ -79,7 +87,7 @@ main() {
     docker compose run --rm backend python manage.py migrate --noinput
 
     if ! docker compose up -d --remove-orphans || ! healthy; then
-        echo "$IMAGE_TAG did not come up healthy. See: docker compose logs backend" >&2
+        echo "$IMAGE_TAG did not come up healthy. See: docker compose logs backend nginx" >&2
         roll_back "$previous"
         exit 1
     fi
