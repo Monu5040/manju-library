@@ -24,3 +24,6 @@ frontend/dist/
 # Written on the server by deploy/scripts/deploy.sh
 deploy/.deployed-tag
 deploy/last-deploy.log
+
+# Celery beat keeps its schedule here when run locally (make worker).
+backend/celerybeat-schedule*
