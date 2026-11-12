@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { PaymentFields } from '@/components/admin/dialogs'
 import { Field, MembershipFields } from '@/components/admin/MembershipFields'
 import { emptyPayment, type MembershipDraft, membershipPayload, paymentPayload } from '@/lib/drafts'
@@ -43,11 +43,13 @@ const emptyStudent = (): StudentDraft => ({
 
 export default function AdmissionPage() {
   const navigate = useNavigate()
+  // The seat map links here with the seat (and shift) the desk picked: ?seat=<id>&shift=<id>.
+  const [params] = useSearchParams()
   const [student, setStudent] = useState(emptyStudent)
   const [terms, setTerms] = useState<MembershipDraft>({
     plan: '',
-    shift: '',
-    seat: '',
+    shift: params.get('shift') ?? '',
+    seat: params.get('seat') ?? '',
     start_date: todayIso(),
     end_date: '',
     price: '',

@@ -1,12 +1,14 @@
-import { Search } from 'lucide-react'
+import { Search, SearchX, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { DueBadge, StateBadge } from '@/components/admin/badges'
 import { ExportMenu } from '@/components/admin/ExportMenu'
 import { Alert } from '@/components/ui/alert'
+import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState, PageHeader, Pagination } from '@/components/ui/page'
+import { Segmented } from '@/components/ui/segmented'
 import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
@@ -56,13 +58,22 @@ export default function StudentsPage() {
           <>
             <ExportMenu path="/admin/students/export/" params={filters} aadhaar />
             <Button asChild>
-              <Link to="/admin/students/new">New admission</Link>
+              <Link to="/admin/students/new">
+                <UserPlus aria-hidden="true" /> New admission
+              </Link>
             </Button>
           </>
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <Segmented
+        label="Which students"
+        className="mb-3"
+        value={view in VIEWS ? view : 'active'}
+        onChange={(v) => update({ view: v })}
+        options={Object.entries(VIEWS).map(([key, v]) => ({ value: key, label: v.label }))}
+      />
+      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_12rem]">
         <form
           role="search"
           onSubmit={(event) => {
@@ -81,13 +92,6 @@ export default function StudentsPage() {
             onBlur={() => q !== (searchParams.get('q') ?? '') && update({ q })}
           />
         </form>
-        <Select aria-label="Which students" value={view} onChange={(e) => update({ view: e.target.value })}>
-          {Object.entries(VIEWS).map(([key, v]) => (
-            <option key={key} value={key}>
-              {v.label}
-            </option>
-          ))}
-        </Select>
         <Select aria-label="Shift" value={shift} onChange={(e) => update({ shift: e.target.value })}>
           <option value="">All shifts</option>
           {shifts.data?.map((s) => (
@@ -101,16 +105,18 @@ export default function StudentsPage() {
       {students.isPending && <Spinner label="Loading students" />}
       {students.error && <Alert variant="destructive">{errorMessage(students.error)}</Alert>}
       {students.data?.results.length === 0 && (
-        <EmptyState title="No students match.">Try another search or view.</EmptyState>
+        <EmptyState icon={SearchX} title="No students match.">
+          Try another search, shift or view.
+        </EmptyState>
       )}
       {students.data && students.data.results.length > 0 && (
         <Table>
           <THead>
             <TR>
-              <TH>Roll</TH>
+              <TH className="hidden sm:table-cell">Roll</TH>
               <TH>Name</TH>
-              <TH>Mobile</TH>
-              <TH>Seat · shift</TH>
+              <TH className="hidden md:table-cell">Mobile</TH>
+              <TH className="hidden sm:table-cell">Seat · shift</TH>
               <TH>Ends</TH>
               <TH>Fees</TH>
             </TR>
@@ -124,15 +130,24 @@ export default function StudentsPage() {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => navigate(`/admin/students/${s.id}`)}
                 >
-                  <TD className="tabular-nums text-muted-foreground">{s.roll_no}</TD>
+                  <TD className="hidden text-muted-foreground tabular-nums sm:table-cell">{s.roll_no}</TD>
                   <TD>
-                    <Link to={`/admin/students/${s.id}`} className="font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
-                      {s.full_name}
-                    </Link>
-                    {s.father_name && <div className="text-xs text-muted-foreground">c/o {s.father_name}</div>}
+                    <div className="flex items-center gap-3">
+                      <Avatar name={s.full_name} tone="soft" className="hidden lg:grid" />
+                      <div className="min-w-0">
+                        <Link to={`/admin/students/${s.id}`} className="font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>
+                          {s.full_name}
+                        </Link>
+                        {s.father_name && <div className="hidden text-xs text-muted-foreground sm:block">c/o {s.father_name}</div>}
+                        <div className="text-xs text-muted-foreground sm:hidden">
+                          Roll {s.roll_no}
+                          {m?.seat_number && ` · seat ${m.seat_number}`}
+                        </div>
+                      </div>
+                    </div>
                   </TD>
-                  <TD className="tabular-nums">{s.mobile}</TD>
-                  <TD>{m ? `${m.seat_number ? `Seat ${m.seat_number}` : 'No seat'} · ${m.shift_name ?? m.time_label}` : '—'}</TD>
+                  <TD className="hidden tabular-nums md:table-cell">{s.mobile}</TD>
+                  <TD className="hidden sm:table-cell">{m ? `${m.seat_number ? `Seat ${m.seat_number}` : 'No seat'} · ${m.shift_name ?? m.time_label}` : '—'}</TD>
                   <TD>
                     {m ? (
                       <div className="flex flex-col items-start gap-1">

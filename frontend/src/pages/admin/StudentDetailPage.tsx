@@ -1,22 +1,24 @@
+import { Armchair, CalendarClock, IndianRupee, Pencil, RefreshCw, UserPlus, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { DueBadge, StateBadge } from '@/components/admin/badges'
 import { NewMembershipDialog, RecordPaymentDialog, RenewDialog } from '@/components/admin/dialogs'
 import { Field } from '@/components/admin/MembershipFields'
 import { Alert } from '@/components/ui/alert'
+import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { EmptyState, PageHeader } from '@/components/ui/page'
+import { EmptyState, PageHeader, StatCard } from '@/components/ui/page'
 import { Select, Textarea } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
 import { api, errorMessage } from '@/lib/api'
 import { useMe } from '@/lib/auth'
 import { fieldErrors } from '@/lib/errors'
-import { formatDate, formatMoney } from '@/lib/format'
+import { daysLeftLabel, formatDate, formatMoney } from '@/lib/format'
 import { useAdminMutation, useMemberships, usePayments, useStudent } from '@/lib/queries'
 import type { Membership, Payment, Student } from '@/lib/types'
 
@@ -54,6 +56,7 @@ export default function StudentDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={s.full_name}
+        media={<Avatar name={s.full_name} className="hidden size-14 text-lg sm:grid" />}
         description={
           <span className="flex flex-wrap items-center gap-2">
             Roll {s.roll_no} · {s.mobile}
@@ -63,13 +66,21 @@ export default function StudentDetailPage() {
         }
         actions={
           <>
-            {latest && latest.state !== 'EXPIRED' && <Button onClick={() => setDialog({ kind: 'renew', membership: latest })}>Renew</Button>}
-            {(!latest || latest.state === 'EXPIRED') && <Button onClick={() => setDialog({ kind: 'new' })}>Give a seat</Button>}
+            {latest && latest.state !== 'EXPIRED' && (
+              <Button onClick={() => setDialog({ kind: 'renew', membership: latest })}>
+                <RefreshCw aria-hidden="true" /> Renew
+              </Button>
+            )}
+            {(!latest || latest.state === 'EXPIRED') && (
+              <Button onClick={() => setDialog({ kind: 'new' })}>
+                <UserPlus aria-hidden="true" /> Give a seat
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setDialog({ kind: 'pay', membership: live.find((m) => m.due_total > 0) ?? latest ?? null })}>
-              Record payment
+              <IndianRupee aria-hidden="true" /> Record payment
             </Button>
             <Button variant="outline" onClick={() => setDialog({ kind: 'edit' })}>
-              Edit details
+              <Pencil aria-hidden="true" /> Edit details
             </Button>
           </>
         }
@@ -86,12 +97,36 @@ export default function StudentDetailPage() {
         </Alert>
       )}
 
+      {latest && (
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          <StatCard
+            label="Seat"
+            icon={Armchair}
+            value={latest.seat_number ? `Seat ${latest.seat_number}` : 'No seat'}
+            hint={`${latest.shift_name ? `${latest.shift_name} · ` : ''}${latest.time_label}`}
+          />
+          <StatCard
+            label={latest.state === 'UPCOMING' ? 'Starts' : latest.state === 'EXPIRED' ? 'Ended' : 'Ends'}
+            icon={CalendarClock}
+            value={formatDate(latest.state === 'UPCOMING' ? latest.start_date : latest.end_date)}
+            hint={latest.state === 'UPCOMING' ? `Until ${formatDate(latest.end_date)}` : daysLeftLabel(latest.days_left)}
+          />
+          <StatCard
+            label="Fees"
+            icon={Wallet}
+            className="col-span-2 sm:col-span-1"
+            value={s.total_due > 0 ? `${formatMoney(s.total_due)} due` : 'All paid'}
+            hint={`${formatMoney(latest.paid_total)} paid of ${formatMoney(latest.net_fee)} this membership`}
+          />
+        </dl>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm lg:grid-cols-3">
             <Detail label="Father's name" value={s.father_name || '—'} />
             <Detail label="Gender" value={GENDER[s.gender]} />
             <Detail label="Other mobile" value={s.alt_mobile || '—'} />

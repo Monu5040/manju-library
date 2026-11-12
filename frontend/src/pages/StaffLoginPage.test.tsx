@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { mockApi, NOT_SIGNED_IN, overview, owner, renderApp } from '@/test/utils'
+import { mockApi, NOT_SIGNED_IN, overview, owner, renderApp, overviewHeading } from '@/test/utils'
 
 
 describe('Staff login', () => {
@@ -31,7 +31,7 @@ describe('Staff login', () => {
     await user.type(screen.getByLabelText('6-digit app code'), '654321')
     await user.click(screen.getByRole('button', { name: 'Connect and sign in' }))
 
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: overviewHeading })).toBeInTheDocument()
     expect(await screen.findByText('Active members')).toBeInTheDocument()
     expect(screen.getByText('99')).toBeInTheDocument()
     expect(calls.find((call) => call.path === '/api/auth/admin/login/')?.body).toEqual({
@@ -56,7 +56,7 @@ describe('Staff login', () => {
     await user.type(await screen.findByLabelText('6-digit app code'), '123456')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: overviewHeading })).toBeInTheDocument()
   })
 
   it('goes back to the password step when the sign-in has expired', async () => {

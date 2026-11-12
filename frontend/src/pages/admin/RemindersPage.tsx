@@ -70,7 +70,7 @@ export default function RemindersPage() {
       </p>
       {(refresh.error || act.error) && <Alert variant="destructive" className="mb-4">{errorMessage(refresh.error ?? act.error)}</Alert>}
 
-      <div role="tablist" aria-label="Reminders" className="mb-4 inline-flex rounded-md border p-0.5">
+      <div role="tablist" aria-label="Reminders" className="mb-5 flex w-fit gap-1 rounded-xl border bg-card p-1 shadow-card">
         {(
           [
             ['open', `To send (${openCount})`],
@@ -83,7 +83,10 @@ export default function RemindersPage() {
             type="button"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={cn('rounded px-3 py-1.5 text-sm font-medium text-muted-foreground', tab === value && 'bg-muted text-foreground')}
+            className={cn(
+              'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+              tab === value ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
           >
             {label}
           </button>

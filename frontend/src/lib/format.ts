@@ -76,3 +76,23 @@ export function formatMonth(iso: string): string {
 export function formatDayMonth(iso: string): string {
   return dayMonth.format(localDate(iso))
 }
+
+const weekdayDayMonth = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+
+/** "Thursday, 12 November" */
+export function formatLongDate(iso: string): string {
+  return weekdayDayMonth.format(localDate(iso))
+}
+
+/** "Good morning" before noon, "Good afternoon" until 5 PM, then "Good evening". */
+export function greeting(now: Date = new Date()): string {
+  const hour = now.getHours()
+  if (hour >= 4 && hour < 12) {
+    return 'Good morning'
+  }
+  return hour >= 12 && hour < 17 ? 'Good afternoon' : 'Good evening'
+}
+
+export function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? ''
+}

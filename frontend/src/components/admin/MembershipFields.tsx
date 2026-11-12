@@ -5,10 +5,7 @@ import { Select } from '@/components/ui/select'
 import type { MembershipDraft } from '@/lib/drafts'
 import { formatMoney, todayIso } from '@/lib/format'
 import { usePlans, useSeatMap, useSeats, useShifts } from '@/lib/queries'
-
-function overlaps(a: [number, number], b: [number, number]) {
-  return [0, 1440, -1440].some((shift) => a[0] < b[1] + shift && b[0] + shift < a[1])
-}
+import { overlaps } from '@/lib/time'
 
 /**
  * Plan, shift, seat, dates and fee. Choosing a plan fills its shift and price. Seats show

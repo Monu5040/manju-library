@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * A modal dialog: overlay, Escape and the close button dismiss it, focus moves into it
- * on open and returns to the opener on close.
+ * on open and returns to the opener on close. On phones it rises from the bottom.
  */
 export function Dialog({
   open,
@@ -37,8 +37,11 @@ export function Dialog({
       }
     }
     document.addEventListener('keydown', onKey)
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = overflow
       opener?.focus?.()
     }
   }, [open, onClose])
@@ -47,8 +50,12 @@ export function Dialog({
     return null
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 animate-fade-in bg-[oklch(0.16_0.02_165/0.5)] backdrop-blur-[2px]"
+        onClick={onClose}
+      />
       <div
         ref={panel}
         role="dialog"
@@ -56,22 +63,22 @@ export function Dialog({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'relative max-h-[92dvh] w-full overflow-y-auto rounded-t-xl border bg-card p-6 shadow-lg sm:rounded-xl',
+          'relative max-h-[92dvh] w-full animate-rise-in overflow-y-auto rounded-t-2xl border bg-card p-6 shadow-float outline-none sm:rounded-2xl',
           wide ? 'sm:max-w-2xl' : 'sm:max-w-md',
         )}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 id={titleId} className="text-lg font-semibold">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-lg font-semibold tracking-tight">
               {title}
             </h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+            {description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>}
           </div>
           <button
             type="button"
             data-close
             onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="-mt-1 -mr-1 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             aria-label="Close"
           >
             <X className="size-4" aria-hidden="true" />

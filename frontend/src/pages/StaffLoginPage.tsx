@@ -43,7 +43,7 @@ export default function StaffLoginPage() {
   }
 
   return (
-    <AuthCard title={STEP_TEXT[step].title} description={STEP_TEXT[step].description}>
+    <AuthCard variant="staff" title={STEP_TEXT[step].title} description={STEP_TEXT[step].description}>
       {step === 'password' && <PasswordStep notice={notice} onNext={setStep} />}
       {step === 'setup' && <SetupStep onExpired={restart} />}
       {step === 'verify' && <AppCodeStep endpoint="/auth/admin/totp/verify/" onExpired={restart} />}
@@ -221,7 +221,7 @@ function AppCodeStep({
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          className="text-center text-lg tracking-[0.5em]"
+          className="h-14 text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
           aria-invalid={Boolean(errors.token)}
           aria-describedby={errors.token ? 'token-error' : undefined}
           {...register('token')}

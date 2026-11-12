@@ -11,11 +11,11 @@ describe('Student portal', () => {
     renderApp('/portal')
     expect(await screen.findByRole('heading', { name: 'Hello, Asha' })).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('5 days left')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Time left in this membership' })).toHaveAttribute('aria-valuetext', '5 days left')
     expect(screen.getByText(/₹150 is due/)).toBeInTheDocument()
     expect(screen.getByText(/Renew at the front desk/)).toBeInTheDocument()
     expect(screen.getByText('Closed on Diwali')).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'Time left in this membership' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Call 9000000000' })).toHaveAttribute('href', 'tel:9000000000')
   })
 
   it('switches between siblings who share a login', async () => {

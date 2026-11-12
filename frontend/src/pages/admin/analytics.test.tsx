@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { Me } from '@/lib/auth'
 import { presetRange } from '@/lib/ranges'
 import type { Analytics } from '@/lib/types'
-import { mockApi, overview, owner, renderApp } from '@/test/utils'
+import { mockApi, overview, owner, renderApp, overviewHeading } from '@/test/utils'
 
 const staffMe: Me = { ...owner, id: 3, full_name: 'Front Desk', role: 'STAFF', can_export: false }
 
@@ -106,7 +106,7 @@ describe('Analytics', () => {
   it('is for the Super Admin only', async () => {
     mockApi({ 'GET /api/auth/me/': { body: staffMe }, 'GET /api/admin/overview/': { body: overview } })
     renderApp('/admin/analytics')
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: overviewHeading })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Analytics' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Ledger' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Expenses' })).toBeInTheDocument()

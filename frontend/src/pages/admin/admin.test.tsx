@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Me } from '@/lib/auth'
@@ -93,6 +93,24 @@ describe('Admin screens', () => {
     expect(body.student.full_name).toBe('Asha Kumari')
     expect(body.membership).toMatchObject({ plan: 7, shift: 1, seat: 2, price: 450, discount: 0 })
     expect(body.payment).toMatchObject({ amount: 450, mode: 'CASH' })
+  })
+
+  it('shows who sits where, filters by shift and admits straight into a free seat', async () => {
+    const user = userEvent.setup()
+    setupApi(staffMe)
+    renderApp('/admin/seats')
+    expect(await screen.findByRole('button', { name: 'Seat 1: Ravi Kumar 10:15 AM – 6:30 PM' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    expect(screen.getByRole('button', { name: 'Day' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Seat 2: free in Day' }))
+    const admit = screen.getByRole('link', { name: 'Admit to this seat' })
+    expect(admit).toHaveAttribute('href', '/admin/students/new?seat=2&shift=1')
+
+    await user.click(admit)
+    expect(await screen.findByRole('heading', { name: 'New admission' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Seat')).toHaveValue('2'))
+    expect(screen.getByLabelText('Shift')).toHaveValue('1')
   })
 
   it('lists students with their seat, end date and dues', async () => {

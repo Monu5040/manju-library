@@ -138,3 +138,6 @@ export const portalHome = {
   shifts: [{ id: 1, name: 'Day', time_label: '10:15 AM – 6:30 PM', hours: 8.25 }],
   plans: [{ id: 1, name: '1 month · Day', duration_months: 1, shift_name: 'Day', price: 450 }],
 }
+
+/** The overview greets whoever signed in ("Good morning, Asha"), whatever the time of day. */
+export const overviewHeading = /^Good (morning|afternoon|evening), \S+$/

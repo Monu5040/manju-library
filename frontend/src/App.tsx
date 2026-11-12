@@ -43,9 +43,10 @@ export default function App() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="login" element={<StudentLoginPage />} />
-        <Route path="staff/login" element={<StaffLoginPage />} />
       </Route>
+      {/* Sign-in pages are full screen, with their own layout. */}
+      <Route path="login" element={<StudentLoginPage />} />
+      <Route path="staff/login" element={<StaffLoginPage />} />
 
       <Route
         path="portal"

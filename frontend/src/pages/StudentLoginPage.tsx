@@ -149,7 +149,7 @@ function CodeStep({ mobile, onChangeNumber }: { mobile: string; onChangeNumber: 
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          className="text-center text-lg tracking-[0.5em]"
+          className="h-14 text-center text-2xl font-semibold tracking-[0.5em] tabular-nums"
           aria-invalid={Boolean(errors.code)}
           aria-describedby={errors.code ? 'code-error' : undefined}
           {...register('code')}
