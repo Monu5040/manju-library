@@ -19,7 +19,6 @@ from .models import ImportJob, ImportRow
 from .reader import UnreadableFile
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-PREVIEW_ROWS = 5
 
 
 class ImportRowSerializer(serializers.ModelSerializer):
@@ -132,23 +131,24 @@ class ImportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericVie
         )
 
     def _detail(self, job, table=None):
-        table = table or services.job_table(job)
-        header_row = job.header_row
-        preview = [
-            [str(v) if v is not None else "" for v in row]
-            for row in table.rows[header_row + 1 : header_row + 1 + PREVIEW_ROWS]
-        ]
+        """The job with its column choices and problem rows. Cell values are never sent back
+        whole: rows carry their Aadhaar masked, and there is no raw preview."""
+        try:
+            table = table or services.job_table(job)
+        except services.FileGone:
+            table = None  # deleted after the undo window: the results are still shown
         problems = job.rows.exclude(result=ImportRow.Result.READY).exclude(
             result=ImportRow.Result.IMPORTED
         )
         return {
             **ImportJobSerializer(job).data,
-            "sheets": table.sheets,
-            "encoding": table.encoding,
-            "delimiter": table.delimiter,
-            "columns": services.columns_for(job, table),
+            "file_deleted": table is None,
+            "sheets": table.sheets if table else [],
+            "encoding": table.encoding if table else "",
+            "delimiter": table.delimiter if table else "",
+            "columns": services.columns_for(job, table) if table else [],
             "fields": [{"key": key, "label": label} for key, (label, _) in services_fields()],
-            "preview": preview,
+            "preview": [],
             "problem_rows": ImportRowSerializer(
                 problems.order_by("row_number")[:300], many=True
             ).data,
@@ -251,9 +251,30 @@ class ImportViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericVie
         headers: list[str] = []
         for row in rows:
             headers.extend(h for h in row.raw if h not in headers)
-        columns = [Column("_row", "Row", "int", 6), Column("_error", "Error", "text", 50)]
-        columns += [Column(h, h, "text", 16) for h in headers]
-        data = [{"_row": r.row_number, "_error": " | ".join(r.errors), **r.raw} for r in rows]
+        aadhaar_header = services.aadhaar_header(job)
+        # Column keys are prefixed so a spreadsheet header can never overwrite Row or Error.
+        columns = [Column("@row", "Row", "int", 6), Column("@error", "Error", "text", 50)]
+        columns += [Column(f"col:{h}", h, "text", 16) for h in headers]
+        data = []
+        for r in rows:
+            cells = dict(r.raw)
+            # The owner gets the Aadhaar back in full here, to fix the row and upload it again.
+            if aadhaar_header and r.values.get("aadhaar_cell"):
+                cells[aadhaar_header] = services.plain_aadhaar(r.values["aadhaar_cell"])
+            data.append(
+                {
+                    "@row": r.row_number,
+                    "@error": " | ".join(r.errors),
+                    **{f"col:{h}": v for h, v in cells.items()},
+                }
+            )
+        audit.record(
+            request,
+            "export.import_errors",
+            entity="import",
+            entity_id=job.pk,
+            metadata={"rows": len(data), "file": job.file_name},
+        )
         name = f"errors-{job.file_name.rsplit('.', 1)[0]}"
         return file_response(
             columns,

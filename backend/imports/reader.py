@@ -17,6 +17,7 @@ import xlrd
 from charset_normalizer import from_bytes
 
 MAX_ROWS = 10_000
+MAX_COLS = 200  # far more than any real sheet; bounds memory for crafted files
 MAX_UNZIPPED_BYTES = 100 * 1024 * 1024  # refuse "zip bombs" disguised as .xlsx
 
 
@@ -57,11 +58,16 @@ def _read_xlsx(content: bytes, sheet: str | None) -> Table:
     try:
         names = workbook.sheetnames
         chosen = sheet if sheet in names else names[0]
-        rows = []
-        for row in workbook[chosen].iter_rows(values_only=True):
-            rows.append(list(row))
-            if len(rows) > MAX_ROWS + 50:
-                break
+        worksheet = workbook[chosen]
+        # Ignore the size the file claims (a tiny file can claim 16,384 columns) and read
+        # only real cells, within fixed limits.
+        worksheet.reset_dimensions()
+        rows = [
+            list(row)
+            for row in worksheet.iter_rows(
+                max_row=MAX_ROWS + 51, max_col=MAX_COLS, values_only=True
+            )
+        ]
     finally:
         workbook.close()
     return Table("xlsx", names, chosen, _trim(rows))
@@ -69,7 +75,8 @@ def _read_xlsx(content: bytes, sheet: str | None) -> Table:
 
 def _read_xls(content: bytes, sheet: str | None) -> Table:
     try:
-        book = xlrd.open_workbook(file_contents=content)
+        # One sheet at a time, rows as long as they really are.
+        book = xlrd.open_workbook(file_contents=content, on_demand=True, ragged_rows=True)
     except Exception as exc:  # xlrd raises several error types for damaged files
         raise UnreadableFile("This .xls file could not be read.") from exc
     names = book.sheet_names()
@@ -78,7 +85,7 @@ def _read_xls(content: bytes, sheet: str | None) -> Table:
     rows = []
     for r in range(min(sh.nrows, MAX_ROWS + 50)):
         row = []
-        for c in range(sh.ncols):
+        for c in range(min(sh.row_len(r), MAX_COLS)):
             cell = sh.cell(r, c)
             if cell.ctype == xlrd.XL_CELL_DATE:
                 row.append(xlrd.xldate_as_datetime(cell.value, book.datemode))
@@ -87,6 +94,7 @@ def _read_xls(content: bytes, sheet: str | None) -> Table:
             else:
                 row.append(cell.value if cell.value != "" else None)
         rows.append(row)
+    book.release_resources()
     return Table("xls", names, chosen, _trim(rows))
 
 
@@ -116,19 +124,26 @@ def _read_csv(content: bytes) -> Table:
         delimiter = ","
     rows = []
     for row in csv.reader(io.StringIO(text), delimiter=delimiter):
-        rows.append([value if value != "" else None for value in row])
+        rows.append([value if value != "" else None for value in row[:MAX_COLS]])
         if len(rows) > MAX_ROWS + 50:
             break
     return Table("csv", ["CSV"], "CSV", _trim(rows), encoding=encoding, delimiter=delimiter)
 
 
 def read_table(content: bytes, sheet: str | None = None) -> Table:
-    if content.startswith(b"PK\x03\x04"):
-        table = _read_xlsx(content, sheet)
-    elif content.startswith(b"\xd0\xcf\x11\xe0"):
-        table = _read_xls(content, sheet)
-    else:
-        table = _read_csv(content)
+    try:
+        if content.startswith(b"PK\x03\x04"):
+            table = _read_xlsx(content, sheet)
+        elif content.startswith(b"\xd0\xcf\x11\xe0"):
+            table = _read_xls(content, sheet)
+        else:
+            table = _read_csv(content)
+    except UnreadableFile:
+        raise
+    except Exception as exc:  # a damaged file must give a clear answer, not a server error
+        raise UnreadableFile(
+            "This file could not be read. Save it again from Excel and retry."
+        ) from exc
     if len(table.rows) > MAX_ROWS + 50:
         raise UnreadableFile(
             f"This sheet has more than {MAX_ROWS:,} rows. Split it into smaller files."

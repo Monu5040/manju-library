@@ -34,4 +34,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["python", "healthcheck.py"]
 
 # Workers come from WEB_CONCURRENCY.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "60", "--access-logfile", "-"]
+# The access log leaves out query strings, which can hold a searched mobile number.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "60", "--access-logfile", "-", "--access-logformat", "%(h)s %(t)s \"%(m)s %(U)s\" %(s)s %(B)s %(M)sms"]

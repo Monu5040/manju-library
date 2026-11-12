@@ -20,3 +20,7 @@ frontend/dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Written on the server by deploy/scripts/deploy.sh
+deploy/.deployed-tag
+deploy/last-deploy.log

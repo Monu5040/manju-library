@@ -70,6 +70,7 @@ MIDDLEWARE = [
     "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.NoStoreApiMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -341,5 +342,9 @@ if SENTRY_DSN:
         environment=ENVIRONMENT,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         send_default_pii=False,
+        # Never send local variables or request bodies: they can hold login codes, Aadhaar
+        # numbers or uploaded spreadsheets.
+        include_local_variables=False,
+        max_request_body_size="never",
         traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
     )

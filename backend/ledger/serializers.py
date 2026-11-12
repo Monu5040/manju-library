@@ -89,6 +89,23 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Enter an amount above zero.")
         return value
 
+    def validate(self, attrs):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from .services import ensure_cash_day_open
+
+        instance = self.instance
+        day = attrs.get("entry_date", instance.entry_date if instance else None)
+        mode = attrs.get("mode", instance.mode if instance else "CASH")
+        branch = self.context.get("branch") or (instance.branch if instance else None)
+        moved = instance is None or "entry_date" in attrs or "mode" in attrs or "amount" in attrs
+        if branch is not None and day is not None and moved:
+            try:
+                ensure_cash_day_open(branch, day, mode, field="entry_date")
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError(exc.message_dict) from exc
+        return attrs
+
 
 class VoidEntrySerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=200)

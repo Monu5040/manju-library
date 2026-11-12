@@ -33,6 +33,25 @@ def parse_range(params, *, default_days: int | None = None) -> tuple[date, date]
     return start, end
 
 
+def ensure_cash_day_open(branch: Branch, day: date, mode: str, field: str = "paid_on") -> None:
+    """
+    Money cannot be dated in the future, and cash cannot be dated into a day whose drawer
+    is already counted: it would slip past the count (the owner can reopen that closing).
+    """
+    if day > timezone.localdate():
+        raise ValidationError({field: "The date cannot be in the future."})
+    if mode != Payment.Mode.CASH:
+        return
+    closed = CashClosing.objects.filter(branch=branch).order_by("-day").first()
+    if closed and day <= closed.day:
+        raise ValidationError(
+            {
+                field: f"The cash for {closed.day:%d %b %Y} and before is already counted. "
+                "Use a later date, or ask the owner to reopen that day in the cash book."
+            }
+        )
+
+
 def void_entry(entry: LedgerEntry, *, reason: str, by) -> LedgerEntry:
     if entry.is_void:
         raise ValidationError({"detail": "This entry is already void."})

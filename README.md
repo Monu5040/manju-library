@@ -80,8 +80,10 @@ to use.
    `FIELD_ENCRYPTION_KEYS` as the comments say, and keep a copy of the encryption key in a
    password manager: without it, encrypted data cannot be read.
 3. First certificate: `deploy/scripts/init-letsencrypt.sh`. Renewals are automatic.
-4. Deploy: `deploy/scripts/deploy.sh`. It builds, migrates (running the safety checks), restarts
-   and waits for the health check. To roll back, run `deploy/scripts/deploy.sh <older-commit-sha>`.
+4. Deploy: `deploy/scripts/deploy.sh`. It pulls fresh base images (security updates), builds,
+   migrates (running the safety checks), restarts and waits for the health check. If the new
+   version does not come up healthy it starts the previous one again by itself. Only commits
+   on `main` can be deployed; to go back on purpose, run `deploy/scripts/deploy.sh <older-sha>`.
    Migrations must stay compatible with the previous release.
 5. Create the owner's account: `docker compose exec backend python manage.py createsuperuser`
 6. Nightly backup with 30-day retention. Add to the server's crontab:
@@ -110,7 +112,11 @@ changing it.
    `deploy/.env.example`.
 2. **Production mode.** Delete `SMS_CONSOLE_ALLOWED`, set `ENVIRONMENT=production`. The
    deploy stops with a clear message if anything production needs is missing.
-3. **Backups.** Fill in the `BACKUP_*` and `S3_*` settings, add the nightly cron line from
+3. **Backups.** Give the backup its own settings file (only `DATABASE_URL`, `BACKUP_*` and the
+   `S3_*`/`AWS_*` keys, not shared with the web app) and an S3 key that can upload but not
+   delete, with old backups removed by a lifecycle rule on the bucket. Encrypt dumps before
+   they leave the server if the storage provider is not fully trusted. Dumps already leave out
+   sessions, login codes and authenticator secrets. Add the nightly cron line from
    [Deploying](#deploying), and once a month prove a restore with `pg_restore_check.sh`.
 4. **Error alerts.** Create a free project on sentry.io and set `SENTRY_DSN`: every server
    error then reaches you by email with the details needed to fix it.

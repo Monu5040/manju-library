@@ -5,6 +5,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 
 from accounts.models import MOBILE_PATTERN, normalize_mobile
+from core.crypto import mask_digits
 from core.validators import normalize_aadhaar, verhoeff_is_valid
 
 
@@ -125,7 +126,8 @@ def parse_aadhaar(value) -> tuple[str, str | None]:
         return "", "Aadhaar was damaged by Excel (shown as 2.2E+11), so it was left out."
     digits = normalize_aadhaar(value)
     if not re.fullmatch(r"[2-9]\d{11}", digits):
-        return "", f"Aadhaar '{parse_text(value)}' is not 12 digits, so it was left out."
+        masked = mask_digits(parse_text(value))
+        return "", f"Aadhaar {masked} is not 12 digits, so it was left out."
     if not verhoeff_is_valid(digits):
         return "", "Aadhaar has a typing mistake (wrong check digit), so it was left out."
     return digits, None

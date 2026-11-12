@@ -18,6 +18,7 @@ from django.utils import timezone
 from accounts.models import User
 from billing.models import Payment
 from billing.services import record_payment
+from core.crypto import decrypt, decrypt_bytes, encrypt, encrypt_bytes, is_encrypted, mask_digits
 from library.models import Branch, Seat, Shift, format_minutes, minute_range, ranges_overlap
 from members.models import Membership, Student, WaitlistEntry
 from members.services import (
@@ -54,7 +55,7 @@ def setup_job(*, branch: Branch, file_name: str, content: bytes, by) -> tuple[Im
         file_name=file_name[:255],
         file_hash=file_hash(content),
         file_format=table.file_format,
-        content=content,
+        content=encrypt_bytes(content),
         sheet=table.sheet,
         header_row=header_row,
         mapping=auto_mapping(header),
@@ -64,8 +65,33 @@ def setup_job(*, branch: Branch, file_name: str, content: bytes, by) -> tuple[Im
     return job, table
 
 
+class FileGone(Exception):
+    """The uploaded file was deleted after the 7-day undo window."""
+
+
 def job_table(job: ImportJob) -> Table:
-    return read_table(bytes(job.content), job.sheet or None)
+    if job.content is None:
+        raise FileGone
+    return read_table(decrypt_bytes(bytes(job.content)), job.sheet or None)
+
+
+def aadhaar_header(job: ImportJob) -> str | None:
+    """The spreadsheet header of the column mapped to Aadhaar, as rows are keyed by it."""
+    index = job.mapping.get("aadhaar")
+    try:
+        header = job_table(job).rows[job.header_row]
+    except (FileGone, IndexError):
+        header = None
+    if index is None:
+        return None
+    if header is not None and index < len(header):
+        return display(header[index]) or f"Column {index + 1}"
+    return None
+
+
+def plain_aadhaar(value: str) -> str:
+    """Aadhaar kept with an import row is encrypted; rows checked before that are plain."""
+    return decrypt(value) if is_encrypted(value) else (value or "")
 
 
 def columns_for(job: ImportJob, table: Table) -> list[dict]:
@@ -112,6 +138,12 @@ def plan_rows(job: ImportJob, table: Table) -> list[RowPlan]:
     file_receipts: set[int] = set()
     file_bookings: dict[str, list[tuple]] = {}
 
+    aadhaar_index = mapping.get("aadhaar")
+    aadhaar_header = (
+        headers[aadhaar_index]
+        if aadhaar_index is not None and aadhaar_index < len(headers)
+        else None
+    )
     plans: list[RowPlan] = []
     for offset, row in enumerate(table.rows[job.header_row + 1 :]):
         row_number = job.header_row + 2 + offset
@@ -126,6 +158,12 @@ def plan_rows(job: ImportJob, table: Table) -> list[RowPlan]:
             row_number, {h: display(v) for h, v in zip(headers, row, strict=False) if display(v)}
         )
         v, err, warn = plan.values, plan.errors, plan.warnings
+        # The row as read is shown on screen: its Aadhaar is masked there, and the full cell
+        # is kept encrypted for the error file, so a fixed row can be uploaded again.
+        raw_aadhaar = display(cell("aadhaar"))
+        if aadhaar_header and raw_aadhaar:
+            plan.raw[aadhaar_header] = mask_digits(raw_aadhaar)
+            v["aadhaar_cell"] = encrypt(raw_aadhaar)
 
         def take(fn, *args, plan=plan):
             try:
@@ -159,7 +197,7 @@ def plan_rows(job: ImportJob, table: Table) -> list[RowPlan]:
             v["mobile"] = take(p.parse_mobile, cell("mobile"))
 
         aadhaar, aadhaar_warning = p.parse_aadhaar(cell("aadhaar"))
-        v["aadhaar"] = aadhaar
+        v["aadhaar"] = encrypt(aadhaar) if aadhaar else ""
         if aadhaar_warning:
             warn.append(aadhaar_warning)
 
@@ -394,7 +432,7 @@ def _import_row(job: ImportJob, row: ImportRow, shifts: dict, seats: dict, by) -
         roll_no=values.get("roll_no"),
         full_name=values["full_name"],
         mobile=mobile,
-        aadhaar=values.get("aadhaar", ""),
+        aadhaar=plain_aadhaar(values.get("aadhaar", "")),
         gender=values.get("gender", ""),
         father_name=values.get("father_name", ""),
         admission_date=values.get("admission_date"),
@@ -446,6 +484,7 @@ def _import_row(job: ImportJob, row: ImportRow, shifts: dict, seats: dict, by) -
     if values.get("payment"):
         pay = values["payment"]
         payment = record_payment(
+            check_closed_days=False,
             student=student,
             membership=membership,
             amount=Decimal(pay["amount"]),

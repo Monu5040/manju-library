@@ -47,4 +47,7 @@ class AdminLoginIdentifierThrottle(SimpleRateThrottle):
         identifier = str(request.data.get("identifier") or "").strip().lower()
         if not identifier:
             return None
+        if "@" not in identifier:
+            # "+91 98765 43210", "9876543210a" and "9876543210" are the same account.
+            identifier = normalize_mobile(identifier) or identifier
         return self.cache_format % {"scope": self.scope, "ident": identifier}

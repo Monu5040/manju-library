@@ -22,7 +22,14 @@ def next_receipt_number(branch: Branch) -> int:
 
 @transaction.atomic
 def record_payment(
-    *, student, amount, by=None, membership=None, receipt_no: int | None = None, **fields
+    *,
+    student,
+    amount,
+    by=None,
+    membership=None,
+    receipt_no: int | None = None,
+    check_closed_days: bool = True,
+    **fields,
 ) -> Payment:
     """
     Save a payment. `receipt_no` keeps a number from the old records when importing; it is
@@ -32,6 +39,14 @@ def record_payment(
         raise ValidationError({"amount": "Enter an amount above zero."})
     if membership is not None and membership.student_id != student.pk:
         raise ValidationError({"membership": "This membership belongs to another student."})
+    if check_closed_days:  # imports bring in old payments on purpose and skip this
+        from ledger.services import ensure_cash_day_open
+
+        ensure_cash_day_open(
+            student.branch,
+            fields.get("paid_on") or timezone.localdate(),
+            fields.get("mode", Payment.Mode.CASH),
+        )
     branch = student.branch
     if not receipt_no or Payment.objects.filter(branch=branch, receipt_no=receipt_no).exists():
         receipt_no = next_receipt_number(branch)

@@ -19,7 +19,7 @@ from billing.models import Payment
 from conftest import valid_aadhaar
 from imports import parsing as p
 from imports.models import ImportJob, ImportRow
-from imports.services import check, commit, setup_job, undo
+from imports.services import check, commit, plain_aadhaar, setup_job, undo
 from library.models import Seat, Shift
 from members.models import Membership, Student, WaitlistEntry
 
@@ -323,7 +323,12 @@ def test_dry_run_reports_each_problem_and_saves_nothing(branch, super_admin, lib
     assert "already used" in row(job, 9).warnings[0]  # receipt 1101 twice
     assert "not a 10-digit" in row(job, 10).errors[0]
     assert "used twice in this file (also row 3)" in row(job, 11).errors[0]
-    assert row(job, 12).values["aadhaar"] == valid_aadhaar("34567890123")
+    stored = row(job, 12)
+    # Stored encrypted, shown masked: the whole number never sits in the row as plain text.
+    assert stored.values["aadhaar"].startswith("enc:v1:")
+    assert plain_aadhaar(stored.values["aadhaar"]) == valid_aadhaar("34567890123")
+    assert valid_aadhaar("34567890123") not in str(stored.raw)
+    assert f"XXXX-XXXX-{valid_aadhaar('34567890123')[-4:]}" in stored.raw.values()
 
 
 def test_import_refuses_errors_unless_told_to_skip(branch, super_admin, library_rows):

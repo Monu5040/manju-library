@@ -76,3 +76,32 @@ def decrypt(token: str) -> str:
         except InvalidTag:
             continue
     raise DecryptionError("No configured key can decrypt this value.")
+
+
+BYTES_PREFIX = b"enc:v1:"
+
+
+def encrypt_bytes(data: bytes) -> bytes:
+    """The same scheme for files (for example an uploaded spreadsheet), without base64."""
+    nonce = os.urandom(_NONCE_BYTES)
+    return BYTES_PREFIX + nonce + _ciphers()[0].encrypt(nonce, data, None)
+
+
+def decrypt_bytes(data: bytes) -> bytes:
+    """Decrypts what encrypt_bytes made; data stored before encryption is returned as it is."""
+    if not data.startswith(BYTES_PREFIX):
+        return data
+    blob = data[len(BYTES_PREFIX) :]
+    nonce, ciphertext = blob[:_NONCE_BYTES], blob[_NONCE_BYTES:]
+    for cipher in _ciphers():
+        try:
+            return cipher.decrypt(nonce, ciphertext, None)
+        except InvalidTag:
+            continue
+    raise DecryptionError("No configured key can decrypt this file.")
+
+
+def mask_digits(value: str) -> str:
+    """XXXX-XXXX-1234 for anything that looks like an ID number; nothing readable otherwise."""
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    return f"XXXX-XXXX-{digits[-4:]}" if len(digits) >= 4 else "(hidden)"

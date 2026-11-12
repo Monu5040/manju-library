@@ -323,7 +323,10 @@ class StaffViewSet(AuditedViewSetMixin, ModelViewSet):
                 raise ValidationError({"is_active": "You cannot switch off your own account."})
             if serializer.validated_data.get("role", user.role) != Role.SUPER_ADMIN:
                 raise ValidationError({"role": "You cannot remove your own Super Admin role."})
+        password_changed = bool(serializer.validated_data.get("password"))
         super().perform_update(serializer)
+        if password_changed:  # the snapshot leaves passwords out, so record it explicitly
+            self.record_audit("password_reset", user)
 
     @action(detail=True, methods=["post"], url_path="reset-authenticator")
     def reset_authenticator(self, request, pk=None):

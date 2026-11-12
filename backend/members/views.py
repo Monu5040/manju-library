@@ -213,6 +213,19 @@ class MembershipViewSet(
             instance, data=request.data, partial=partial, context=self.get_serializer_context()
         )
         serializer.is_valid(raise_exception=True)
+        money_or_dates = {"plan", "price", "discount", "start_date", "end_date"}
+        touched = {
+            f
+            for f, v in serializer.validated_data.items()
+            if f in money_or_dates and getattr(instance, f) != v
+        }
+        if touched and request.user.role != Role.SUPER_ADMIN:
+            # Otherwise a discount equal to the fee, or a later end date, would quietly
+            # write off what a student owes or give free months.
+            raise PermissionDenied(
+                "Only the Super Admin can change a membership's fee, discount, plan or dates. "
+                "Staff can move the seat or shift and edit notes."
+            )
         before = snapshot(instance)
         for field, value in serializer.validated_data.items():
             setattr(instance, field, value)

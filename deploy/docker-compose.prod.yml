@@ -8,6 +8,8 @@ x-django: &django
     context: ../backend
   image: manju-library/backend:${IMAGE_TAG:-latest}
   env_file: .env
+  environment:
+    APP_VERSION: ${IMAGE_TAG:-dev}  # shown on the System status page
   restart: unless-stopped
   depends_on:
     redis:
@@ -25,8 +27,13 @@ services:
   worker:
     <<: *django
     command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    # Unhealthy when the worker stops answering: reminders and nightly jobs would stop.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 10 > /dev/null"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
 
   beat:
     <<: *django
@@ -46,6 +53,11 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   nginx:
     build:
@@ -72,7 +84,9 @@ services:
 
   # Renews the HTTPS certificate; the first one comes from scripts/init-letsencrypt.sh.
   certbot:
-    image: certbot/certbot:latest
+    # Pinned (a moving "latest" could jump versions inside the container that holds the TLS
+    # keys); Dependabot proposes updates.
+    image: certbot/certbot:v5.10.0@sha256:c5698da859429ccee0fcc299a8000368198222d1f9e789ab6e388b491e8ce06d
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-www:/var/www/certbot
@@ -81,6 +95,11 @@ services:
       - -c
       - "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Nightly database backup to object storage, run by cron on the host:
   #   cd deploy && docker compose --profile backup run --rm backup

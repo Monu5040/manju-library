@@ -18,6 +18,10 @@ class JsonFormatter(logging.Formatter):
         for key, value in vars(record).items():
             if key not in _STANDARD_ATTRS and not key.startswith("_"):
                 payload[key] = value
+        request = payload.get("request")
+        if request is not None and hasattr(request, "path"):
+            # Only the method and path: query strings can hold a searched mobile number.
+            payload["request"] = f"{getattr(request, 'method', '')} {request.path}"
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, default=str)

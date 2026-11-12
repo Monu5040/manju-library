@@ -59,7 +59,7 @@ export default function ImportPage() {
             className="flex flex-wrap items-center gap-3"
             onSubmit={(event) => {
               event.preventDefault()
-              if (file) upload.mutate(file, { onSuccess: (job) => navigate(`/admin/import/${job.id}`, { state: { job } }) })
+              if (file) upload.mutate(file, { onSuccess: (job) => navigate(`/admin/import/${job.id}`) })
             }}
           >
             <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-lg border border-dashed px-4 py-6 hover:bg-muted/50">

@@ -54,4 +54,10 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           REF: ${{ inputs.ref }}
-        run: ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && ./deploy/scripts/deploy.sh '$REF'"
+        # The server's output stays in a root-only log on the server: it can hold personal
+        # data (a failed migration's details), and this repository's Actions logs are public.
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && umask 077 && ./deploy/scripts/deploy.sh '$REF' > deploy/last-deploy.log 2>&1" \
+            && echo "Deployed. Details: deploy/last-deploy.log on the server." \
+            || { echo "The deploy failed (a failed release is rolled back). Details: deploy/last-deploy.log on the server." >&2; exit 1; }
