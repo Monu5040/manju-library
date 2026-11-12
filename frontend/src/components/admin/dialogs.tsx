@@ -107,6 +107,14 @@ export function RecordPaymentDialog({
   )
 }
 
+/** As on the server: the day after the current end, or today if it has already ended. */
+function renewalStart(membership: Membership): string {
+  const [y, m, d] = membership.end_date.split('-').map(Number)
+  const next = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+  const today = todayIso()
+  return next > today ? next : today
+}
+
 export function RenewDialog({
   open,
   onClose,
@@ -150,7 +158,7 @@ export function RenewDialog({
         }}
       >
         {save.error && <Alert variant="destructive">{errors.seat ?? errorMessage(save.error)}</Alert>}
-        <MembershipFields value={terms} onChange={setTerms} errors={errors} startOptional />
+        <MembershipFields value={terms} onChange={setTerms} errors={errors} startOptional defaultStart={renewalStart(membership)} />
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" checked={payNow} onChange={(e) => setPayNow(e.target.checked)} className="size-4" />
           Record the payment now

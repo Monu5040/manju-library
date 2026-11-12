@@ -52,7 +52,7 @@ export default function PortalHomePage() {
         </p>
       </header>
 
-      {m && (m.state === 'EXPIRED' || (m.state === 'ACTIVE' && m.days_left <= 7)) && (
+      {m && !selected.renewed_until && (m.state === 'EXPIRED' || (m.state === 'ACTIVE' && m.days_left <= 7)) && (
         <Alert variant={m.state === 'EXPIRED' ? 'destructive' : 'warning'}>
           {m.state === 'EXPIRED' ? `Your membership ended on ${formatDate(m.end_date)}.` : `Your membership ends on ${formatDate(m.end_date)}.`}{' '}
           {openRenewal ? 'Renew online now, or at the front desk, to keep your seat.' : 'Renew at the front desk to keep your seat.'}
@@ -108,7 +108,8 @@ function MembershipPass({
   const total = Math.max(1, (Date.parse(m.end_date) - Date.parse(m.start_date)) / 86_400_000 + 1)
   const left = Math.max(0, Math.min(total, m.days_left + 1))
   const percent = m.state === 'UPCOMING' ? 100 : m.state === 'ACTIVE' ? Math.round((left / total) * 100) : 0
-  const soon = m.state === 'ACTIVE' && m.days_left <= 7
+  // Already renewed: the end of this membership is no cause for worry.
+  const soon = m.state === 'ACTIVE' && m.days_left <= 7 && !student.renewed_until
 
   return (
     <section
@@ -125,7 +126,7 @@ function MembershipPass({
           <p className="text-[11px] font-bold tracking-[0.14em] text-accent uppercase">Membership pass</p>
           <p className="mt-1 text-sm text-sidebar-muted">{m.plan_name ?? 'Membership'}</p>
         </div>
-        <PassState membership={m} />
+        <PassState membership={m} renewed={Boolean(student.renewed_until)} />
       </div>
 
       <div className="flex items-center justify-between gap-5 px-6 pt-5 pb-6 sm:px-7">
@@ -178,9 +179,11 @@ function MembershipPass({
   )
 }
 
-function PassState({ membership: m }: { membership: PortalMembership }) {
+function PassState({ membership: m, renewed }: { membership: PortalMembership; renewed: boolean }) {
   const [label, tone] =
-    m.state === 'EXPIRED'
+    renewed && m.state !== 'CANCELLED'
+      ? ['Renewed', 'bg-[oklch(0.72_0.13_152/0.18)] text-[oklch(0.86_0.1_152)] ring-[oklch(0.72_0.13_152/0.35)]']
+      : m.state === 'EXPIRED'
       ? ['Ended', 'bg-destructive/20 text-[oklch(0.86_0.08_27)] ring-destructive/40']
       : m.state === 'UPCOMING'
         ? ['Starts soon', 'bg-sidebar-active text-sidebar-foreground ring-sidebar-border']

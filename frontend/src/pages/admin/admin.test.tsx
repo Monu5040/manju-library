@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Me } from '@/lib/auth'
+import { todayIso } from '@/lib/format'
 import type { Membership, Payment, Student } from '@/lib/types'
 import { mockApi, owner, renderApp } from '@/test/utils'
 
@@ -131,6 +132,17 @@ describe('Admin screens', () => {
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Show (logged)' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Renew' })).toBeInTheDocument()
+  })
+
+  it('checks seats for the day a renewal starts, not today', async () => {
+    const user = userEvent.setup()
+    const { calls } = setupApi(staffMe)
+    renderApp('/admin/students/1')
+    await user.click(await screen.findByRole('button', { name: 'Renew' }))
+    await screen.findByRole('dialog', { name: /Renew for Asha Kumari/ })
+    // Asha's month ends on 10 Dec, so her own seat is checked from 11 Dec (or today, later on).
+    const start = todayIso() > '2026-12-11' ? todayIso() : '2026-12-11'
+    await waitFor(() => expect(calls.some((c) => c.url === `/api/admin/seat-map/?date=${start}`)).toBe(true))
   })
 
   it('shows owner-only actions to the Super Admin', async () => {

@@ -17,17 +17,22 @@ export function MembershipFields({
   onChange,
   errors = {},
   startOptional = false,
+  defaultStart,
 }: {
   value: MembershipDraft
   onChange: (next: MembershipDraft) => void
   errors?: Partial<Record<keyof MembershipDraft, string>>
   startOptional?: boolean
+  /** The start used when the date is left empty (a renewal starts after the current end). */
+  defaultStart?: string
 }) {
   const plans = usePlans()
   const shifts = useShifts()
   const seats = useSeats()
   const [today] = useState(todayIso)
-  const seatMap = useSeatMap(value.start_date || today)
+  // Who sits where on the day this membership would start, not today: renewing a student
+  // must not show their own current seat as taken.
+  const seatMap = useSeatMap(value.start_date || defaultStart || today)
 
   const set = (patch: Partial<MembershipDraft>) => onChange({ ...value, ...patch })
 

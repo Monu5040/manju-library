@@ -18,6 +18,15 @@ describe('Student portal', () => {
     expect(screen.getByRole('link', { name: 'Call 9000000000' })).toHaveAttribute('href', 'tel:9000000000')
   })
 
+  it('stops asking to renew once the student has renewed', async () => {
+    const renewed = { ...portalProfile, renewed_until: '2026-12-30' }
+    mockApi({ 'GET /api/auth/me/': { body: student }, 'GET /api/portal/home/': { body: { ...portalHome, profiles: [renewed] } } })
+    renderApp('/portal')
+    expect(await screen.findByText('Renewed: your seat is yours until 30 Dec 2026.')).toBeInTheDocument()
+    expect(screen.queryByText(/Renew at the front desk/)).not.toBeInTheDocument()
+    expect(screen.getByText('Renewed')).toBeInTheDocument()
+  })
+
   it('switches between siblings who share a login', async () => {
     const user = userEvent.setup()
     mockApi({ 'GET /api/auth/me/': { body: student }, 'GET /api/portal/home/': { body: { ...portalHome, profiles: [portalProfile, sibling] } } })
